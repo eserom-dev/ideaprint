@@ -30,7 +30,7 @@ body {
 }
 
 p, blockquote, q {
-  color: #FFFFFF !important;
+  color: var(--text-primary);
 }
 
 /* Blueprint Grid Layer */
