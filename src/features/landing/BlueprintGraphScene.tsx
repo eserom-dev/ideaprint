@@ -32,7 +32,7 @@ export const BlueprintGraphScene: React.FC<BlueprintGraphSceneProps> = ({ classN
   return (
     <div
       ref={containerRef}
-      className={`relative w-full h-[520px] sm:h-[580px] lg:h-[640px] select-none pointer-events-auto ${className}`}
+      className={`relative w-full h-[360px] sm:h-[400px] lg:h-[450px] xl:h-[480px] max-h-[52vh] select-none pointer-events-auto ${className}`}
       style={{ perspective: '1200px' }}
     >
       {/* 3D Parallax Canvas Container */}

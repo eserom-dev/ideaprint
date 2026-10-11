@@ -2,9 +2,8 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { ArrowRight, Sparkles, ChevronRight } from 'lucide-react';
+import { ArrowRight, ChevronRight } from 'lucide-react';
 import { BlueprintGraphScene } from './BlueprintGraphScene';
-import { EcosystemLogoBar } from '@/components/landing/EcosystemLogoBar';
 
 export const HeroGlassInterface: React.FC = () => {
   const scrollToNextScene = (e: React.MouseEvent) => {
@@ -14,12 +13,12 @@ export const HeroGlassInterface: React.FC = () => {
   };
 
   return (
-    <div className="relative z-20 w-full max-w-7xl mx-auto px-6 sm:px-12 pt-28 sm:pt-32 pb-16">
+    <div className="relative z-20 w-full max-w-7xl mx-auto px-6 sm:px-12 pt-16 sm:pt-20 pb-4 h-full flex flex-col justify-center items-center">
       {/* 1. Top Announcement Pill */}
-      <div className="w-full flex justify-center mb-8 sm:mb-10">
+      <div className="w-full flex justify-center mb-3 sm:mb-5">
         <Link
           href="/projects/new"
-          className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-zinc-900/80 hover:bg-zinc-850 border border-white/10 hover:border-white/25 text-xs text-zinc-300 hover:text-white backdrop-blur-md transition-all duration-200 group"
+          className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-zinc-900/80 hover:bg-zinc-800 border border-white/10 hover:border-white/25 text-xs text-zinc-300 hover:text-white backdrop-blur-md transition-all duration-200 group"
         >
           <span className="w-1.5 h-1.5 rounded-full bg-ember animate-pulse" />
           <span className="font-semibold text-white">Stage 1 to 5 Lifecycle Engine</span>
@@ -32,23 +31,23 @@ export const HeroGlassInterface: React.FC = () => {
       </div>
 
       {/* 2. Main Hero Grid: Left Content & Right 3D Isometric Architecture Graph */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-8 items-center">
+      <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-6 items-center">
         {/* Left Column: Authentic IDEAPRINT Headline, Subtitle, and CTAs */}
         <div className="lg:col-span-6 xl:col-span-6 flex flex-col items-start text-left">
-          <h1 className="text-5xl sm:text-6xl md:text-7xl xl:text-[80px] font-sans font-extrabold tracking-tight text-white leading-[0.98] mb-8 select-none drop-shadow-2xl uppercase">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl xl:text-[66px] font-display font-extrabold tracking-tight text-white leading-[0.98] mb-3 sm:mb-5 select-none drop-shadow-2xl uppercase">
             MAKE IDEAS <br />
-            BUILDABLE.
+            <span className="metal">BUILDABLE.</span>
           </h1>
 
-          <p className="max-w-xl text-base sm:text-lg text-white font-normal leading-relaxed mb-10 drop-shadow-md">
+          <p className="max-w-xl text-sm sm:text-base text-zinc-300 font-normal leading-relaxed mb-6 sm:mb-7 drop-shadow-md">
             Turn your software ideas into structured requirements, technical architecture, 
             development tasks, and actionable product blueprints — all in one intelligent workspace.
           </p>
 
-          <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
+          <div className="flex flex-col sm:flex-row items-center gap-3.5 w-full sm:w-auto">
             <Link
               href="/projects/new"
-              className="whitespace-nowrap flex-shrink-0 w-full sm:w-auto px-8 py-4 rounded-full bg-ember hover:bg-ember-hover text-zinc-950 font-bold text-sm tracking-wide flex items-center justify-center gap-2 shadow-glow transition-all duration-150 hover:scale-[1.03] active:scale-[0.98]"
+              className="whitespace-nowrap flex-shrink-0 w-full sm:w-auto px-7 py-3.5 rounded-full bg-ember hover:bg-ember-hover text-zinc-950 font-bold text-xs sm:text-sm tracking-wide flex items-center justify-center gap-2 shadow-glow transition-all duration-150 hover:scale-[1.03] active:scale-[0.98]"
             >
               <span>Build Your Blueprint</span>
               <ArrowRight className="w-4 h-4 ml-0.5" />
@@ -57,7 +56,7 @@ export const HeroGlassInterface: React.FC = () => {
             <a
               href="#scene-002"
               onClick={scrollToNextScene}
-              className="whitespace-nowrap flex-shrink-0 w-full sm:w-auto px-8 py-4 rounded-full bg-zinc-900/80 hover:bg-zinc-850 text-white font-semibold text-sm border border-white/20 hover:border-white/40 backdrop-blur-md transition-all duration-150 hover:scale-[1.02] active:scale-[0.98] text-center"
+              className="whitespace-nowrap flex-shrink-0 w-full sm:w-auto px-7 py-3.5 rounded-full bg-zinc-900/80 hover:bg-zinc-850 text-zinc-200 hover:text-white font-semibold text-xs sm:text-sm border border-white/20 hover:border-white/40 backdrop-blur-md transition-all duration-150 hover:scale-[1.02] active:scale-[0.98] text-center"
             >
               Explore the Platform
             </a>
@@ -69,9 +68,6 @@ export const HeroGlassInterface: React.FC = () => {
           <BlueprintGraphScene />
         </div>
       </div>
-
-      {/* 3. Bottom Tech Architecture Strip */}
-      <EcosystemLogoBar />
     </div>
   );
 };

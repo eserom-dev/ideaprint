@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import { FloatingNav } from '@/components/navigation/FloatingNav';
 import { HeroVideoBackground } from './HeroVideoBackground';
 import { HeroGlassInterface } from './HeroGlassInterface';
+import { EcosystemLogoBar } from '@/components/landing/EcosystemLogoBar';
 import { SceneStages } from './SceneStages';
 import { CapabilitiesBento } from './CapabilitiesBento';
 import { BottomBarController } from './BottomBarController';
@@ -20,14 +21,17 @@ export const LandingPage: React.FC = () => {
       {/* Navigation Layer */}
       <FloatingNav />
 
-      {/* Hero Cinematic World Container */}
-      <div id="hero" className="relative min-h-[95vh] flex flex-col justify-center items-center overflow-hidden isolate">
+      {/* Hero Cinematic World Container - EXACT 100vh screen fit with zero overflow */}
+      <div id="hero" className="relative h-screen min-h-[560px] max-h-screen flex flex-col justify-center items-center overflow-hidden isolate">
         {/* Layer 1: Vivid Monochrome Smoke Background Video */}
         <HeroVideoBackground />
 
-        {/* Layer 2: Glass Interface with Canonical Headline & Isometric Blueprint Graph */}
+        {/* Layer 2: Glass Interface with Restored Font Colors & Isometric Blueprint Graph */}
         <HeroGlassInterface />
       </div>
+
+      {/* Tech Architecture Ecosystem Strip */}
+      <EcosystemLogoBar />
 
       {/* Marquee Separator */}
       <ChipMarquee />
