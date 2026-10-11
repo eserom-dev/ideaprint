@@ -15,6 +15,7 @@ import {
   ExternalLink,
   Layers,
   Sparkles,
+  Lock,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
@@ -29,6 +30,11 @@ export default function SettingsPage() {
   const [displayName, setDisplayName] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileMsg, setProfileMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Password update
+  const [newPassword, setNewPassword] = useState('');
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [passwordMsg, setPasswordMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const [projectCount, setProjectCount] = useState<number>(0);
   const [loadingUsage, setLoadingUsage] = useState(true);
@@ -59,7 +65,7 @@ export default function SettingsPage() {
       const { count, error } = await supabase
         .from('projects')
         .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id);
+        .eq('owner_id', user.id);
 
       if (!error && count !== null) {
         setProjectCount(count);
@@ -93,6 +99,33 @@ export default function SettingsPage() {
     }
   };
 
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordMsg(null);
+    if (newPassword.length < 6) {
+      setPasswordMsg({ type: 'error', text: 'Password must be at least 6 characters.' });
+      return;
+    }
+
+    setSavingPassword(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (error) {
+        setPasswordMsg({ type: 'error', text: error.message });
+      } else {
+        setPasswordMsg({ type: 'success', text: 'Password updated successfully.' });
+        setNewPassword('');
+      }
+    } catch (err: any) {
+      setPasswordMsg({ type: 'error', text: err.message || 'Failed to update password.' });
+    } finally {
+      setSavingPassword(false);
+    }
+  };
+
   const handleDeleteAccount = async () => {
     if (deleteConfirm !== 'DELETE') {
       setDeleteError('Type DELETE in all capitals to confirm account removal.');
@@ -103,11 +136,21 @@ export default function SettingsPage() {
     setDeleteError(null);
 
     try {
-      // 1. Delete user projects
-      if (user) {
-        await supabase.from('projects').delete().eq('user_id', user.id);
+      if (!user) return;
+      const res = await fetch('/api/account/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          confirmation: 'DELETE',
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to delete account');
       }
-      // 2. Sign out and redirect to home
+
       await signOut();
       router.push('/');
     } catch (err: any) {
@@ -176,7 +219,7 @@ export default function SettingsPage() {
               }`}
             >
               <User className="w-4 h-4" />
-              <span>Profile Details</span>
+              <span>Profile & Security</span>
             </button>
 
             <button
@@ -188,7 +231,7 @@ export default function SettingsPage() {
               }`}
             >
               <Layers className="w-4 h-4" />
-              <span>Usage & Telemetry</span>
+              <span>Usage Overview</span>
             </button>
 
             <button
@@ -200,7 +243,7 @@ export default function SettingsPage() {
               }`}
             >
               <CreditCard className="w-4 h-4" />
-              <span>Plan & Invoicing</span>
+              <span>Plan & Entitlements</span>
             </button>
 
             <button
@@ -218,92 +261,142 @@ export default function SettingsPage() {
 
           {/* Tab Panel */}
           <div className="md:col-span-3">
-            {/* TAB: PROFILE */}
+            {/* TAB: PROFILE & SECURITY */}
             {activeTab === 'profile' && (
-              <div className="glass-card rounded-2xl p-6 sm:p-8 border border-white/10 space-y-6">
-                <div>
-                  <h2 className="text-xl font-display font-bold text-white mb-1">Personal Identity</h2>
-                  <p className="text-xs font-mono text-zinc-400">
-                    Your authenticated credentials verified via Supabase Auth
-                  </p>
+              <div className="space-y-6">
+                <div className="glass-card rounded-2xl p-6 sm:p-8 border border-white/10 space-y-6">
+                  <div>
+                    <h2 className="text-xl font-display font-bold text-white mb-1">Personal Identity</h2>
+                    <p className="text-xs font-mono text-zinc-400">
+                      Your authenticated credentials verified via Supabase Auth
+                    </p>
+                  </div>
+
+                  {profileMsg && (
+                    <div
+                      className={`p-4 rounded-xl text-xs font-mono flex items-center gap-2.5 ${
+                        profileMsg.type === 'success'
+                          ? 'bg-emerald-950/60 border border-emerald-500/30 text-emerald-200'
+                          : 'bg-red-950/60 border border-red-500/30 text-red-200'
+                      }`}
+                    >
+                      {profileMsg.type === 'success' ? (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                      ) : (
+                        <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+                      )}
+                      <span>{profileMsg.text}</span>
+                    </div>
+                  )}
+
+                  <form onSubmit={handleUpdateProfile} className="space-y-5">
+                    <div>
+                      <label className="block text-xs font-mono text-zinc-400 mb-2 font-bold uppercase tracking-wider">
+                        Email Address
+                      </label>
+                      <input
+                        type="email"
+                        disabled
+                        value={user.email || ''}
+                        className="w-full bg-zinc-950/50 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-zinc-400 font-mono cursor-not-allowed"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-mono text-zinc-400 mb-2 font-bold uppercase tracking-wider">
+                        Display Name
+                      </label>
+                      <input
+                        type="text"
+                        value={displayName}
+                        onChange={(e) => setDisplayName(e.target.value)}
+                        placeholder="Engineer Name"
+                        className="w-full bg-zinc-950 border border-white/15 rounded-xl px-4 py-2.5 text-xs text-white font-mono focus:outline-none focus:border-ember"
+                      />
+                    </div>
+
+                    <div>
+                      <button
+                        type="submit"
+                        disabled={savingProfile}
+                        className="px-5 py-2.5 rounded-xl bg-ember hover:bg-ember/90 disabled:opacity-50 text-zinc-950 font-bold text-xs font-mono flex items-center gap-2 shadow-glow"
+                      >
+                        {savingProfile ? 'Saving...' : 'Save Profile'}
+                      </button>
+                    </div>
+                  </form>
                 </div>
 
-                {profileMsg && (
-                  <div
-                    className={`p-4 rounded-xl text-xs font-mono flex items-center gap-2.5 ${
-                      profileMsg.type === 'success'
-                        ? 'bg-emerald-950/60 border border-emerald-500/30 text-emerald-200'
-                        : 'bg-red-950/60 border border-red-500/30 text-red-200'
-                    }`}
-                  >
-                    {profileMsg.type === 'success' ? (
-                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                    ) : (
-                      <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
-                    )}
-                    <span>{profileMsg.text}</span>
-                  </div>
-                )}
-
-                <form onSubmit={handleUpdateProfile} className="space-y-5">
+                {/* Password Change Form */}
+                <div className="glass-card rounded-2xl p-6 sm:p-8 border border-white/10 space-y-6">
                   <div>
-                    <label className="block text-xs font-mono text-zinc-400 mb-2 font-bold uppercase tracking-wider">
-                      Email Address
-                    </label>
-                    <input
-                      type="email"
-                      disabled
-                      value={user.email || ''}
-                      className="w-full bg-zinc-950/50 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-zinc-400 font-mono cursor-not-allowed"
-                    />
-                    <span className="text-[11px] font-mono text-zinc-500 mt-1 block">
-                      Protected primary authentication identifier
-                    </span>
+                    <h2 className="text-xl font-display font-bold text-white mb-1">Security & Password</h2>
+                    <p className="text-xs font-mono text-zinc-400">
+                      Update your account password
+                    </p>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-mono text-zinc-400 mb-2 font-bold uppercase tracking-wider">
-                      Display Name
-                    </label>
-                    <input
-                      type="text"
-                      value={displayName}
-                      onChange={(e) => setDisplayName(e.target.value)}
-                      placeholder="Senior Architect"
-                      className="w-full bg-zinc-950 border border-white/15 rounded-xl px-4 py-2.5 text-xs text-white font-mono focus:outline-none focus:border-ember focus:ring-1 focus:ring-ember transition-all"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-mono text-zinc-400 mb-2 font-bold uppercase tracking-wider">
-                      User Identifier (UUID)
-                    </label>
-                    <div className="p-2.5 rounded-xl bg-zinc-950 border border-white/10 font-mono text-[11px] text-zinc-500 break-all">
-                      {user.id}
+                  {passwordMsg && (
+                    <div
+                      className={`p-4 rounded-xl text-xs font-mono flex items-center gap-2.5 ${
+                        passwordMsg.type === 'success'
+                          ? 'bg-emerald-950/60 border border-emerald-500/30 text-emerald-200'
+                          : 'bg-red-950/60 border border-red-500/30 text-red-200'
+                      }`}
+                    >
+                      {passwordMsg.type === 'success' ? (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                      ) : (
+                        <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+                      )}
+                      <span>{passwordMsg.text}</span>
                     </div>
-                  </div>
+                  )}
 
-                  <div className="pt-2">
+                  <form onSubmit={handleUpdatePassword} className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-mono text-zinc-400 mb-2 font-bold uppercase tracking-wider">
+                        New Password
+                      </label>
+                      <input
+                        type="password"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="Minimum 6 characters"
+                        className="w-full bg-zinc-950 border border-white/15 rounded-xl px-4 py-2.5 text-xs text-white font-mono focus:outline-none focus:border-ember"
+                      />
+                    </div>
+
                     <button
                       type="submit"
-                      disabled={savingProfile}
-                      className="px-5 py-2.5 rounded-xl bg-ember hover:bg-ember/90 disabled:opacity-50 text-zinc-950 font-bold text-xs font-mono flex items-center gap-2 transition-all cursor-pointer shadow-glow"
+                      disabled={savingPassword || !newPassword}
+                      className="px-5 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 text-white font-bold text-xs font-mono flex items-center gap-2 border border-white/10"
                     >
-                      {savingProfile ? 'Saving...' : 'Save Changes'}
+                      <Lock className="w-3.5 h-3.5 text-ember" />
+                      <span>{savingPassword ? 'Updating...' : 'Update Password'}</span>
                     </button>
-                  </div>
-                </form>
+                  </form>
+                </div>
               </div>
             )}
 
             {/* TAB: USAGE */}
             {activeTab === 'usage' && (
               <div className="glass-card rounded-2xl p-6 sm:p-8 border border-white/10 space-y-6">
-                <div>
-                  <h2 className="text-xl font-display font-bold text-white mb-1">Usage & Telemetry</h2>
-                  <p className="text-xs font-mono text-zinc-400">
-                    Real-time metrics calculated from your PostgreSQL database records
-                  </p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-xl font-display font-bold text-white mb-1">Usage & Telemetry</h2>
+                    <p className="text-xs font-mono text-zinc-400">
+                      Real-time metrics calculated from your PostgreSQL database records
+                    </p>
+                  </div>
+                  <Link
+                    href="/usage"
+                    className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs font-mono text-white flex items-center gap-1.5 border border-white/10"
+                  >
+                    <span>Full Usage Dashboard</span>
+                    <ExternalLink className="w-3.5 h-3.5 text-ember" />
+                  </Link>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -328,7 +421,7 @@ export default function SettingsPage() {
                       <span>Live / Operational</span>
                     </div>
                     <span className="text-xs font-mono text-zinc-400 block pt-1">
-                      Multi-Model Gateway (Gemini & Groq)
+                      Multi-Model Server AI Gateway
                     </span>
                   </div>
                 </div>
@@ -341,10 +434,10 @@ export default function SettingsPage() {
                   </div>
                   <div className="flex justify-between py-1 border-b border-white/5">
                     <span>Export Formats:</span>
-                    <span className="text-zinc-200">JSON, Markdown, SQL, OpenAPI, Mermaid, CSV</span>
+                    <span className="text-zinc-200">JSON, Markdown, SQL, OpenAPI, Mermaid, CSV, ZIP</span>
                   </div>
                   <div className="flex justify-between py-1">
-                    <span>Generation Gateway Rate Limit:</span>
+                    <span>AI Provider Rate Limit:</span>
                     <span className="text-zinc-200">60 requests / minute</span>
                   </div>
                 </div>
@@ -376,18 +469,8 @@ export default function SettingsPage() {
                   </div>
 
                   <p className="text-xs text-zinc-400 font-sans leading-relaxed">
-                    Includes the full 8-pass AI pipeline, PostgreSQL DDL with RLS generation, OpenAPI contracts, and all export bundles.
+                    Includes the full AI pipeline, PostgreSQL DDL with RLS generation, OpenAPI contracts, and all export bundles.
                   </p>
-                </div>
-
-                <div className="pt-2">
-                  <Link
-                    href="/pricing"
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-xs font-mono text-zinc-300 hover:text-white border border-white/10 transition-colors"
-                  >
-                    <span>Inspect Pro & Team Waitlist Details</span>
-                    <ExternalLink className="w-3.5 h-3.5 text-ember" />
-                  </Link>
                 </div>
               </div>
             )}

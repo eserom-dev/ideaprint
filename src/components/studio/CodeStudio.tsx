@@ -19,10 +19,16 @@ import {
   Sparkles,
   Layers,
   CheckCircle2,
+  Edit3,
+  Save,
+  AlertCircle,
+  HelpCircle,
+  Kanban,
 } from 'lucide-react';
 import { LiveAppPreview } from './LiveAppPreview';
+import { useAuth } from '@/context/AuthContext';
 
-interface GeneratedFile {
+export interface GeneratedFile {
   path: string;
   description: string;
   language: string;
@@ -43,67 +49,137 @@ interface CodeStudioProps {
 }
 
 export const CodeStudio: React.FC<CodeStudioProps> = ({ project }) => {
+  const { user } = useAuth();
   const [files, setFiles] = useState<GeneratedFile[]>([]);
   const [activeFilePath, setActiveFilePath] = useState<string>('src/app/page.tsx');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generationStep, setGenerationStep] = useState<string | null>(null);
+  const [generationError, setGenerationError] = useState<string | null>(null);
   const [copiedFile, setCopiedFile] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
-  const [viewMode, setViewMode] = useState<'preview' | 'code'>('preview');
+  const [viewMode, setViewMode] = useState<'preview' | 'code'>('code');
   const [searchFile, setSearchFile] = useState('');
 
-  // Initial code generation from project blueprint
+  // Editing state
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<string | null>(null);
+  const [syntaxWarning, setSyntaxWarning] = useState<string | null>(null);
+
+  // Task-specific generation target
+  const [selectedTaskId, setSelectedTaskId] = useState<string>('all');
+
+  // Load codebase from project or trigger generation
   useEffect(() => {
-    // If project already has stored codebase in constraints, load it
     const storedCodebase = project.constraints?.codebase;
     if (Array.isArray(storedCodebase) && storedCodebase.length > 0) {
       setFiles(storedCodebase);
       setActiveFilePath(storedCodebase[0].path);
     } else {
-      // Auto-trigger initial generation
       triggerCodeGeneration();
     }
   }, [project.id]);
 
+  const activeFile = files.find((f) => f.path === activeFilePath) || files[0];
+
+  useEffect(() => {
+    if (activeFile) {
+      setEditContent(activeFile.content);
+      setIsEditing(false);
+      setSaveStatus(null);
+      setSyntaxWarning(null);
+    }
+  }, [activeFilePath, activeFile]);
+
   const triggerCodeGeneration = async () => {
     setIsGenerating(true);
-    setGenerationStep('Analyzing blueprint requirements & schemas...');
+    setGenerationError(null);
+
+    const targetTask =
+      selectedTaskId !== 'all'
+        ? (project.tasks || []).find((t: any) => t.displayId === selectedTaskId)
+        : undefined;
 
     try {
-      setTimeout(() => setGenerationStep('Synthesizing Next.js 14 App Router layout & pages...'), 600);
-      setTimeout(() => setGenerationStep('Generating PostgreSQL tables & Row Level Security DDL...'), 1200);
-      setTimeout(() => setGenerationStep('Packaging package.json & environment configs...'), 1800);
-
       const res = await fetch('/api/code/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           projectId: project.id,
           blueprint: project,
+          targetTask,
+          userId: user?.id,
         }),
       });
 
       const data = await res.json();
-      if (data.success && Array.isArray(data.files) && data.files.length > 0) {
-        setFiles(data.files);
-        // Persist to localStorage cache
-        if (typeof window !== 'undefined') {
-          localStorage.setItem(`ideaprint_code_${project.id}`, JSON.stringify(data.files));
-        }
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to synthesize codebase');
       }
-    } catch (err) {
-      console.warn('Code generation notice:', err);
+
+      if (Array.isArray(data.files) && data.files.length > 0) {
+        setFiles(data.files);
+        setActiveFilePath(data.files[0].path);
+      }
+    } catch (err: any) {
+      setGenerationError(err.message || 'Error communicating with AI Code Generator.');
     } finally {
       setIsGenerating(false);
-      setGenerationStep(null);
     }
   };
 
-  const activeFile = files.find((f) => f.path === activeFilePath) || files[0];
+  const handleSaveEdit = async () => {
+    if (!activeFile) return;
+
+    // Local syntax validation
+    if (activeFile.path.endsWith('.json')) {
+      try {
+        JSON.parse(editContent);
+      } catch (e: any) {
+        setSyntaxWarning(`Invalid JSON Syntax: ${e.message}`);
+        return;
+      }
+    }
+
+    setIsSaving(true);
+    setSaveStatus(null);
+    setSyntaxWarning(null);
+
+    const updatedFiles = files.map((f) =>
+      f.path === activeFile.path ? { ...f, content: editContent } : f
+    );
+
+    try {
+      const res = await fetch('/api/code/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectId: project.id,
+          files: updatedFiles,
+          userId: user?.id,
+          commitMessage: `Edited ${activeFile.path}`,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to save file');
+      }
+
+      setFiles(updatedFiles);
+      setIsEditing(false);
+      setSaveStatus(`Saved (v${data.version})`);
+      setTimeout(() => setSaveStatus(null), 3000);
+    } catch (err: any) {
+      setSyntaxWarning(err.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleCopyFile = () => {
     if (!activeFile) return;
-    navigator.clipboard.writeText(activeFile.content);
+    navigator.clipboard.writeText(isEditing ? editContent : activeFile.content);
     setCopiedFile(true);
     setTimeout(() => setCopiedFile(false), 2000);
   };
@@ -148,58 +224,47 @@ export const CodeStudio: React.FC<CodeStudioProps> = ({ project }) => {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 sm:p-6 rounded-2xl bg-zinc-900/80 border border-white/10 backdrop-blur-xl">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="w-2 h-2 rounded-full bg-emerald-400" />
             <h2 className="text-xl font-sans font-bold text-white">Full-Stack Code Studio</h2>
-            <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-mono font-bold uppercase">
-              100% Turnkey Codebase
+            <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] font-mono font-bold uppercase">
+              AI Generated · Not Verified
             </span>
           </div>
           <p className="text-xs text-zinc-400 font-sans">
-            Production-grade codebase with complete App Router pages, PostgreSQL schemas, and real interactive UI.
+            Runnable TypeScript, Next.js 14 App Router, and Supabase PostgreSQL schema with Row Level Security.
           </p>
         </div>
 
         {/* View Mode Toggle & Primary Actions */}
         <div className="flex flex-wrap items-center gap-3">
-          {/* Toggle between Live Preview & Code View */}
           <div className="flex items-center gap-1 bg-zinc-950 p-1 rounded-xl border border-white/10 text-xs font-mono">
-            <button
-              onClick={() => setViewMode('preview')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                viewMode === 'preview'
-                  ? 'bg-white text-zinc-950 font-bold shadow-sm'
-                  : 'text-zinc-400 hover:text-white'
-              }`}
-            >
-              <Eye className="w-3.5 h-3.5" />
-              <span>Live App Preview</span>
-            </button>
             <button
               onClick={() => setViewMode('code')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
                 viewMode === 'code'
-                  ? 'bg-white text-zinc-950 font-bold shadow-sm'
+                  ? 'bg-zinc-800 text-white font-bold shadow-sm'
                   : 'text-zinc-400 hover:text-white'
               }`}
             >
-              <Code2 className="w-3.5 h-3.5" />
+              <Code2 className="w-3.5 h-3.5 text-ember" />
               <span>Source Files ({files.length})</span>
+            </button>
+            <button
+              onClick={() => setViewMode('preview')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                viewMode === 'preview'
+                  ? 'bg-zinc-800 text-white font-bold shadow-sm'
+                  : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              <Eye className="w-3.5 h-3.5" />
+              <span>Preview</span>
             </button>
           </div>
 
           <button
-            onClick={triggerCodeGeneration}
-            disabled={isGenerating}
-            title="Re-synthesize all files"
-            className="px-3.5 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-xs font-mono text-zinc-200 border border-white/10 flex items-center gap-2 transition-all hover:scale-[1.02] disabled:opacity-50 cursor-pointer"
-          >
-            <RotateCcw className={`w-3.5 h-3.5 text-ember ${isGenerating ? 'animate-spin' : ''}`} />
-            <span>{isGenerating ? 'Synthesizing...' : 'Re-generate'}</span>
-          </button>
-
-          <button
             onClick={handleDownloadZip}
-            className="px-4 py-2 rounded-xl bg-ember hover:bg-ember-hover text-xs font-mono font-bold text-zinc-950 flex items-center gap-2 shadow-glow transition-all hover:scale-[1.03] active:scale-[0.98] cursor-pointer"
+            className="px-4 py-2 rounded-xl bg-ember hover:bg-ember-hover text-xs font-mono font-bold text-zinc-950 flex items-center gap-2 shadow-glow transition-all"
           >
             {downloadSuccess ? (
               <>
@@ -209,17 +274,54 @@ export const CodeStudio: React.FC<CodeStudioProps> = ({ project }) => {
             ) : (
               <>
                 <Download className="w-4 h-4" />
-                <span>Download .ZIP</span>
+                <span>Download ZIP</span>
               </>
             )}
           </button>
         </div>
       </div>
 
-      {isGenerating && (
-        <div className="p-4 rounded-xl bg-ember/10 border border-ember/20 flex items-center gap-3 font-mono text-xs text-ember animate-pulse">
-          <div className="w-4 h-4 rounded-full border-2 border-ember border-t-transparent animate-spin" />
-          <span>{generationStep || 'Building full-stack codebase files...'}</span>
+      {/* Task-Specific Targeting & Regeneration Controls Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-xl bg-zinc-950 border border-white/10 text-xs font-mono">
+        <div className="flex items-center gap-2">
+          <Kanban className="w-4 h-4 text-zinc-400" />
+          <span className="text-zinc-400">Target Scope:</span>
+          <select
+            value={selectedTaskId}
+            onChange={(e) => setSelectedTaskId(e.target.value)}
+            className="bg-zinc-900 border border-white/10 rounded-lg px-2.5 py-1 text-white text-xs outline-none focus:border-ember"
+          >
+            <option value="all">Entire Application Codebase</option>
+            {(project.tasks || []).map((t: any) => (
+              <option key={t.displayId} value={t.displayId}>
+                {t.displayId}: {t.title.slice(0, 36)}...
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <button
+          onClick={triggerCodeGeneration}
+          disabled={isGenerating}
+          className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-white/10 flex items-center gap-1.5 transition-colors disabled:opacity-50"
+        >
+          <RotateCcw className={`w-3.5 h-3.5 text-ember ${isGenerating ? 'animate-spin' : ''}`} />
+          <span>{isGenerating ? 'Synthesizing...' : 'Synthesize Code'}</span>
+        </button>
+      </div>
+
+      {generationError && (
+        <div className="p-4 rounded-xl bg-rose-950/60 border border-rose-500/40 text-rose-300 font-mono text-xs flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0" />
+            <span>{generationError}</span>
+          </div>
+          <button
+            onClick={triggerCodeGeneration}
+            className="px-3 py-1 rounded bg-rose-900 hover:bg-rose-800 text-white font-bold"
+          >
+            Retry
+          </button>
         </div>
       )}
 
@@ -236,7 +338,7 @@ export const CodeStudio: React.FC<CodeStudioProps> = ({ project }) => {
         </div>
       )}
 
-      {/* VIEW MODE 2: Full Source Code Viewer & File Tree */}
+      {/* VIEW MODE 2: Full Source Code Viewer, Editor & File Tree */}
       {viewMode === 'code' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[580px]">
           {/* Left File Tree Explorer */}
@@ -304,43 +406,91 @@ export const CodeStudio: React.FC<CodeStudioProps> = ({ project }) => {
             </div>
           </div>
 
-          {/* Right Code Viewer & Syntax Display */}
+          {/* Right Code Viewer & Editor */}
           <div className="lg:col-span-8 rounded-2xl bg-zinc-950/90 border border-white/10 flex flex-col overflow-hidden">
             {/* File Tab Header */}
             <div className="px-5 py-3 border-b border-white/10 bg-zinc-900/80 flex items-center justify-between text-xs font-mono">
               <div className="flex items-center gap-2 text-white truncate max-w-md">
                 {activeFile && getFileIcon(activeFile.path)}
                 <span className="font-bold truncate">{activeFile?.path}</span>
-                <span className="text-zinc-600 hidden sm:inline">·</span>
-                <span className="text-zinc-400 text-[11px] hidden sm:inline truncate">
-                  {activeFile?.description}
-                </span>
+                {saveStatus && (
+                  <span className="text-emerald-400 font-bold text-[10px]">{saveStatus}</span>
+                )}
               </div>
 
-              <button
-                onClick={handleCopyFile}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition-colors cursor-pointer flex-shrink-0"
-              >
-                {copiedFile ? (
+              <div className="flex items-center gap-2">
+                {isEditing ? (
                   <>
-                    <Check className="w-3.5 h-3.5 text-emerald-400" />
-                    <span className="text-emerald-400 font-bold">Copied!</span>
+                    <button
+                      onClick={() => setIsEditing(false)}
+                      className="px-2.5 py-1.5 rounded-lg bg-zinc-800 text-zinc-400 hover:text-white"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSaveEdit}
+                      disabled={isSaving}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-ember hover:bg-ember-hover text-zinc-950 font-bold transition-colors"
+                    >
+                      <Save className="w-3.5 h-3.5" />
+                      <span>{isSaving ? 'Saving...' : 'Save File'}</span>
+                    </button>
                   </>
                 ) : (
                   <>
-                    <Copy className="w-3.5 h-3.5 text-zinc-400" />
-                    <span>Copy File</span>
+                    <button
+                      onClick={() => setIsEditing(true)}
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition-colors"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                      <span>Edit</span>
+                    </button>
+
+                    <button
+                      onClick={handleCopyFile}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition-colors cursor-pointer"
+                    >
+                      {copiedFile ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 text-emerald-400" />
+                          <span className="text-emerald-400 font-bold">Copied!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5 text-zinc-400" />
+                          <span>Copy</span>
+                        </>
+                      )}
+                    </button>
                   </>
                 )}
-              </button>
+              </div>
             </div>
 
-            {/* Code Body with line numbers */}
-            <div className="flex-1 p-5 overflow-auto max-h-[580px] bg-zinc-950 font-mono text-xs leading-relaxed text-zinc-200 selection:bg-ember selection:text-zinc-950">
-              <pre className="whitespace-pre overflow-x-auto">
-                <code>{activeFile?.content || '// Loading generated code...'}</code>
-              </pre>
-            </div>
+            {syntaxWarning && (
+              <div className="p-2.5 bg-rose-950/80 border-b border-rose-500/30 text-rose-300 text-[11px] font-mono flex items-center gap-2">
+                <AlertCircle className="w-3.5 h-3.5 text-rose-400 flex-shrink-0" />
+                <span>{syntaxWarning}</span>
+              </div>
+            )}
+
+            {/* Code Body */}
+            {isEditing ? (
+              <div className="flex-1 p-4 bg-zinc-950">
+                <textarea
+                  value={editContent}
+                  onChange={(e) => setEditContent(e.target.value)}
+                  className="w-full h-[520px] bg-zinc-900 border border-white/10 rounded-xl p-4 font-mono text-xs text-white leading-relaxed outline-none focus:border-ember"
+                  spellCheck={false}
+                />
+              </div>
+            ) : (
+              <div className="flex-1 p-5 overflow-auto max-h-[580px] bg-zinc-950 font-mono text-xs leading-relaxed text-zinc-200 selection:bg-ember selection:text-zinc-950">
+                <pre className="whitespace-pre overflow-x-auto">
+                  <code>{activeFile?.content || '// Loading generated code...'}</code>
+                </pre>
+              </div>
+            )}
           </div>
         </div>
       )}
