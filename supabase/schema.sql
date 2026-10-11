@@ -271,56 +271,69 @@ alter table public.risks enable row level security;
 alter table public.activity_events enable row level security;
 
 -- Profiles: Users can view and edit only their own profile
+drop policy if exists profiles_self on public.profiles;
 create policy profiles_self on public.profiles
   for all using (id = (select auth.uid()))
   with check (id = (select auth.uid()));
 
 -- Projects: Only project owners can select, insert, update, or delete
+drop policy if exists projects_owner on public.projects;
 create policy projects_owner on public.projects
   for all using (owner_id = (select auth.uid()))
   with check (owner_id = (select auth.uid()));
 
 -- All Child Tables: Protected by has_project_access(project_id)
+drop policy if exists requirements_policy on public.requirements;
 create policy requirements_policy on public.requirements
   for all using (has_project_access(project_id))
   with check (has_project_access(project_id));
 
+drop policy if exists user_stories_policy on public.user_stories;
 create policy user_stories_policy on public.user_stories
   for all using (has_project_access(project_id))
   with check (has_project_access(project_id));
 
+drop policy if exists components_policy on public.components;
 create policy components_policy on public.components
   for all using (has_project_access(project_id))
   with check (has_project_access(project_id));
 
+drop policy if exists entities_policy on public.entities;
 create policy entities_policy on public.entities
   for all using (has_project_access(project_id))
   with check (has_project_access(project_id));
 
+drop policy if exists api_endpoints_policy on public.api_endpoints;
 create policy api_endpoints_policy on public.api_endpoints
   for all using (has_project_access(project_id))
   with check (has_project_access(project_id));
 
+drop policy if exists milestones_policy on public.milestones;
 create policy milestones_policy on public.milestones
   for all using (has_project_access(project_id))
   with check (has_project_access(project_id));
 
+drop policy if exists tasks_policy on public.tasks;
 create policy tasks_policy on public.tasks
   for all using (has_project_access(project_id))
   with check (has_project_access(project_id));
 
+drop policy if exists test_cases_policy on public.test_cases;
 create policy test_cases_policy on public.test_cases
   for all using (has_project_access(project_id))
   with check (has_project_access(project_id));
 
+drop policy if exists decisions_policy on public.decisions;
 create policy decisions_policy on public.decisions
   for all using (has_project_access(project_id))
   with check (has_project_access(project_id));
 
+drop policy if exists risks_policy on public.risks;
 create policy risks_policy on public.risks
   for all using (has_project_access(project_id))
   with check (has_project_access(project_id));
 
+drop policy if exists activity_events_policy on public.activity_events;
 create policy activity_events_policy on public.activity_events
   for all using (has_project_access(project_id))
   with check (has_project_access(project_id));
@@ -363,9 +376,11 @@ create table if not exists public.waitlist_submissions (
 );
 
 alter table public.waitlist_submissions enable row level security;
+drop policy if exists waitlist_insert_policy on public.waitlist_submissions;
 create policy waitlist_insert_policy on public.waitlist_submissions
   for insert with check (true);
 
+drop policy if exists waitlist_select_admin_policy on public.waitlist_submissions;
 create policy waitlist_select_admin_policy on public.waitlist_submissions
   for select using (
     exists (
