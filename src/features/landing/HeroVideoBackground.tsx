@@ -70,8 +70,32 @@ export const HeroVideoBackground: React.FC = () => {
       )}
 
       {/* Atmospheric grade overlay: monochrome smoke grade with lifted blacks */}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-transparent to-zinc-950 pointer-events-none" />
-      <div className="absolute inset-0 bg-zinc-950/30 backdrop-contrast-125 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-zinc-950 pointer-events-none" />
+      <div className="absolute inset-0 bg-zinc-950/20 backdrop-contrast-125 pointer-events-none" />
+
+      {/* Blueprint Vertical Column Guides (from reference image) */}
+      <div className="absolute inset-0 w-full h-full max-w-7xl mx-auto px-6 sm:px-12 pointer-events-none grid grid-cols-6 sm:grid-cols-12">
+        {Array.from({ length: 12 }).map((_, i) => (
+          <div
+            key={i}
+            className="h-full border-r border-white/[0.04] relative"
+          >
+            {/* Occasional accent markers matching screenshot */}
+            {i === 1 && (
+              <div className="absolute top-[22%] -right-[3px] w-1.5 h-1.5 bg-white/40" />
+            )}
+            {i === 4 && (
+              <div className="absolute top-[72%] -right-[3px] w-1.5 h-1.5 bg-white/30" />
+            )}
+            {i === 9 && (
+              <div className="absolute top-[14%] -right-[3px] w-1.5 h-1.5 rounded-full bg-ember shadow-glow-sm" />
+            )}
+            {i === 11 && (
+              <div className="absolute top-[52%] -right-[3px] w-1.5 h-1.5 rounded-full bg-ember/80" />
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   );
 };

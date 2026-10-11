@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { ChevronRight, ArrowUp } from 'lucide-react';
+import { ChevronRight, ArrowUp, ArrowRight } from 'lucide-react';
 
 export const BottomBarController: React.FC = () => {
   const [currentScene, setCurrentScene] = useState(1);
@@ -14,6 +14,15 @@ export const BottomBarController: React.FC = () => {
     'scene-004',
     'scene-005',
     'pricing',
+  ];
+
+  const nextSceneLabels = [
+    'The gap',
+    'Atomic specs',
+    'System graph',
+    'Task DAG',
+    'Testing gate',
+    'Top',
   ];
 
   useEffect(() => {
@@ -49,73 +58,71 @@ export const BottomBarController: React.FC = () => {
     }
   };
 
-  const radius = 13;
+  const radius = 14;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - scrollProgress * circumference;
 
   return (
-    <div className="fixed bottom-6 left-0 right-0 z-40 flex justify-center px-4 pointer-events-none">
-      <div className="pointer-events-auto flex items-center justify-between gap-5 px-5 py-2.5 rounded-full bg-zinc-950/85 border border-white/15 shadow-2xl backdrop-blur-2xl text-xs font-mono text-white">
-        {/* Scene Counter */}
-        <div className="flex items-center gap-1.5 font-bold">
-          <span className="text-ember">00{currentScene}</span>
+    <div className="fixed bottom-6 left-0 right-0 z-40 px-6 sm:px-12 pointer-events-none">
+      <div className="w-full max-w-7xl mx-auto flex items-center justify-between text-xs font-mono">
+        {/* Left: Explore trigger */}
+        <div className="pointer-events-auto hidden sm:flex items-center gap-2 text-zinc-400 hover:text-white transition-colors cursor-pointer" onClick={() => jumpToScene(1)}>
+          <span className="tracking-widest uppercase font-semibold text-[11px] text-zinc-300">EXPLORE</span>
+          <ArrowRight className="w-3.5 h-3.5 text-zinc-400" />
+        </div>
+
+        {/* Center: Monospace Scene Counter */}
+        <div className="pointer-events-auto px-4 py-1.5 rounded-full bg-zinc-950/70 border border-white/10 backdrop-blur-md shadow-xl flex items-center gap-2 font-bold text-zinc-300">
+          <span className="text-zinc-100">00{currentScene}</span>
           <span className="text-zinc-600">/</span>
-          <span className="text-zinc-400">006</span>
+          <span className="text-zinc-500">006</span>
         </div>
 
-        {/* Dot Rail */}
-        <div className="hidden sm:flex items-center gap-2 px-2">
-          {sceneIds.map((_, idx) => (
-            <button
-              key={idx}
-              onClick={() => jumpToScene(idx)}
-              className={`w-2 h-2 rounded-full transition-all ${
-                currentScene === idx + 1
-                  ? 'bg-ember w-5 shadow-glow-sm'
-                  : 'bg-zinc-700 hover:bg-zinc-500'
-              }`}
-              title={`Jump to Scene 00${idx + 1}`}
-            />
-          ))}
-        </div>
+        {/* Right: Next Section Pill */}
+        <div className="pointer-events-auto flex items-center">
+          <button
+            onClick={handleNext}
+            className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-zinc-950/80 border border-white/15 backdrop-blur-md hover:border-white/30 transition-all group"
+            aria-label="Navigate to next section"
+          >
+            <span className="text-[10px] uppercase font-bold tracking-widest text-zinc-400 group-hover:text-zinc-300">
+              NEXT
+            </span>
+            <span className="text-xs font-semibold text-white group-hover:text-ember transition-colors">
+              {nextSceneLabels[currentScene - 1]}
+            </span>
 
-        {/* Circular NEXT button with progress ring */}
-        <button
-          onClick={handleNext}
-          className="flex items-center gap-2 pl-3 border-l border-white/10 hover:text-ember transition-colors group"
-        >
-          <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-300 group-hover:text-white">
-            {currentScene >= 6 ? 'Top' : 'Next'}
-          </span>
-          <div className="relative w-7 h-7 flex items-center justify-center">
-            <svg className="w-7 h-7 -rotate-90">
-              <circle
-                cx="14"
-                cy="14"
-                r={radius}
-                className="stroke-zinc-800"
-                strokeWidth="2.5"
-                fill="none"
-              />
-              <circle
-                cx="14"
-                cy="14"
-                r={radius}
-                className="stroke-ember transition-all duration-150"
-                strokeWidth="2.5"
-                fill="none"
-                strokeDasharray={circumference}
-                strokeDashoffset={strokeDashoffset}
-                strokeLinecap="round"
-              />
-            </svg>
-            {currentScene >= 6 ? (
-              <ArrowUp className="w-3.5 h-3.5 absolute text-ember" />
-            ) : (
-              <ChevronRight className="w-3.5 h-3.5 absolute text-ember" />
-            )}
-          </div>
-        </button>
+            {/* Circular Progress Ring */}
+            <div className="relative w-8 h-8 flex items-center justify-center ml-1">
+              <svg className="w-8 h-8 -rotate-90 transform">
+                <circle
+                  cx="16"
+                  cy="16"
+                  r={radius}
+                  className="stroke-zinc-800"
+                  strokeWidth="2.5"
+                  fill="none"
+                />
+                <circle
+                  cx="16"
+                  cy="16"
+                  r={radius}
+                  className="stroke-ember transition-all duration-150"
+                  strokeWidth="2.5"
+                  fill="none"
+                  strokeDasharray={circumference}
+                  strokeDashoffset={strokeDashoffset}
+                  strokeLinecap="round"
+                />
+              </svg>
+              {currentScene >= 6 ? (
+                <ArrowUp className="w-3.5 h-3.5 absolute text-ember group-hover:scale-110 transition-transform" />
+              ) : (
+                <ChevronRight className="w-3.5 h-3.5 absolute text-ember group-hover:translate-x-0.5 transition-transform" />
+              )}
+            </div>
+          </button>
+        </div>
       </div>
     </div>
   );
