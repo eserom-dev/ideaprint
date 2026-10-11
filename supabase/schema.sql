@@ -20,6 +20,15 @@ create table if not exists public.profiles (
   updated_at timestamptz not null default now()
 );
 
+-- Ensure all columns exist if public.profiles already existed previously
+alter table public.profiles add column if not exists display_name text;
+alter table public.profiles add column if not exists email text;
+alter table public.profiles add column if not exists avatar_url text;
+alter table public.profiles add column if not exists is_admin boolean not null default false;
+alter table public.profiles add column if not exists preferences jsonb default '{"theme": "dark", "effectsTier": "a"}'::jsonb;
+alter table public.profiles add column if not exists created_at timestamptz not null default now();
+alter table public.profiles add column if not exists updated_at timestamptz not null default now();
+
 -- 3. Projects Container Table
 create table if not exists public.projects (
   id uuid primary key default gen_random_uuid(),
@@ -35,6 +44,15 @@ create table if not exists public.projects (
   updated_at timestamptz not null default now(),
   deleted_at timestamptz
 );
+
+-- Ensure all columns exist if public.projects already existed previously
+alter table public.projects add column if not exists tagline text;
+alter table public.projects add column if not exists description text;
+alter table public.projects add column if not exists type text not null default 'web_app';
+alter table public.projects add column if not exists stage text not null default 'capture';
+alter table public.projects add column if not exists status text not null default 'active';
+alter table public.projects add column if not exists constraints jsonb not null default '{}'::jsonb;
+alter table public.projects add column if not exists deleted_at timestamptz;
 
 create index if not exists idx_projects_owner on public.projects (owner_id);
 create index if not exists idx_projects_status on public.projects (status) where deleted_at is null;
