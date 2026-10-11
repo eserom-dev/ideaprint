@@ -20,3 +20,4 @@
 - DEC-018: Implemented 22-test automated unit and integration suite (`tests/export-generators.test.ts`, `tests/dag-validation.test.ts`, `tests/ai-schemas.test.ts`, `tests/security-env.test.ts`) with zero external test runners using Node's native test harness.
 - DEC-019: Created automated pipeline evaluation harness (`scripts/evaluate-pipeline.mjs`) executing real prompts against the live AI provider and validating schema integrity and latency.
 - DEC-020: Added `"allowImportingTsExtensions": true` in `tsconfig.json` ensuring seamless interoperability between Next.js bundler and Node ESM test execution.
+- DEC-021: Configured automated fallback from Groq to Google Gemini on token rate limits (HTTP 413/429) and capped Groq max_tokens to 3,200 to prevent 8,000 TPM limit exhaustion. Defaulted provider priority to Google Gemini (`gemini-flash-latest`) for its 1,000,000 TPM allowance.

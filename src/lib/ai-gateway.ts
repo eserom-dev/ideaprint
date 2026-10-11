@@ -13,98 +13,143 @@ export interface GatewayCallParams {
   maxTokens?: number;
 }
 
+async function callGroqDirect(params: GatewayCallParams, model: string, apiKey: string): Promise<string> {
+  const maxTokens = Math.min(params.maxTokens ?? 3200, 3200);
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: 'system', content: params.system },
+        { role: 'user', content: params.prompt },
+      ],
+      temperature: params.temperature ?? 0.2,
+      max_tokens: maxTokens,
+      response_format: { type: 'json_object' },
+    }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    const err: any = new Error(`Groq AI request failed (HTTP ${res.status}): ${errText}`);
+    err.status = res.status;
+    throw err;
+  }
+
+  const data = await res.json();
+  const content = data.choices?.[0]?.message?.content;
+  if (!content) throw new Error('Groq returned empty response');
+  return content;
+}
+
+async function callGoogleDirect(params: GatewayCallParams, model: string, apiKey: string): Promise<string> {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [
+        {
+          parts: [{ text: `${params.system}\n\nUser Request:\n${params.prompt}` }],
+        },
+      ],
+      generationConfig: {
+        temperature: params.temperature ?? 0.2,
+        maxOutputTokens: params.maxTokens ?? 8192,
+        responseMimeType: 'application/json',
+      },
+    }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    const err: any = new Error(`Google AI request failed (HTTP ${res.status}): ${errText}`);
+    err.status = res.status;
+    throw err;
+  }
+
+  const data = await res.json();
+  const raw = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!raw) throw new Error('Google AI returned empty content');
+  return raw;
+}
+
+async function callOpenAIDirect(params: GatewayCallParams, model: string, apiKey: string): Promise<string> {
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: 'system', content: params.system },
+        { role: 'user', content: params.prompt },
+      ],
+      temperature: params.temperature ?? 0.2,
+      max_tokens: params.maxTokens ?? 4096,
+      response_format: { type: 'json_object' },
+    }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    const err: any = new Error(`OpenAI request failed (HTTP ${res.status}): ${errText}`);
+    err.status = res.status;
+    throw err;
+  }
+
+  const data = await res.json();
+  const content = data.choices?.[0]?.message?.content;
+  if (!content) throw new Error('OpenAI returned empty response');
+  return content;
+}
+
 export async function callRawAI(params: GatewayCallParams): Promise<string> {
   const env = getServerEnv();
   const { aiProvider, aiModel, aiApiKey } = env;
 
-  if (aiProvider === 'groq') {
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${aiApiKey}`,
-      },
-      body: JSON.stringify({
-        model: aiModel,
-        messages: [
-          { role: 'system', content: params.system },
-          { role: 'user', content: params.prompt },
-        ],
-        temperature: params.temperature ?? 0.2,
-        max_tokens: params.maxTokens ?? 8000,
-        response_format: { type: 'json_object' },
-      }),
-    });
+  try {
+    if (aiProvider === 'groq') {
+      return await callGroqDirect(params, aiModel, aiApiKey);
+    }
+    if (aiProvider === 'google' || aiProvider === 'gemini') {
+      return await callGoogleDirect(params, aiModel, aiApiKey);
+    }
+    if (aiProvider === 'openai') {
+      return await callOpenAIDirect(params, aiModel, aiApiKey);
+    }
+  } catch (primaryErr: any) {
+    // If rate-limited or TPM token payload ceiling exceeded, check if a backup provider is available
+    const isRateOrPayloadLimit =
+      primaryErr.status === 413 ||
+      primaryErr.status === 429 ||
+      /rate_limit|too large|TPM|exceeded/i.test(primaryErr.message);
 
-    if (!res.ok) {
-      const errText = await res.text();
-      throw new Error(`Groq AI request failed (HTTP ${res.status}): ${errText}`);
+    if (aiProvider === 'groq' && isRateOrPayloadLimit) {
+      const backupGoogleKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY;
+      if (backupGoogleKey) {
+        console.warn(
+          `[AI-Gateway] Groq token/rate limit encountered (${primaryErr.message}). Automatically falling back to Google Gemini...`
+        );
+        return await callGoogleDirect(params, 'gemini-flash-latest', backupGoogleKey);
+      }
+    } else if ((aiProvider === 'google' || aiProvider === 'gemini') && isRateOrPayloadLimit) {
+      const backupGroqKey = process.env.GROQ_API_KEY;
+      if (backupGroqKey) {
+        console.warn(
+          `[AI-Gateway] Google Gemini rate limit encountered (${primaryErr.message}). Automatically falling back to Groq...`
+        );
+        return await callGroqDirect(params, 'openai/gpt-oss-120b', backupGroqKey);
+      }
     }
 
-    const data = await res.json();
-    const content = data.choices?.[0]?.message?.content;
-    if (!content) throw new Error('Groq returned empty response');
-    return content;
-  }
-
-  if (aiProvider === 'google' || aiProvider === 'gemini') {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${aiModel}:generateContent?key=${aiApiKey}`;
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [{ text: `${params.system}\n\nUser Request:\n${params.prompt}` }],
-          },
-        ],
-        generationConfig: {
-          temperature: params.temperature ?? 0.2,
-          maxOutputTokens: params.maxTokens ?? 8192,
-          responseMimeType: 'application/json',
-        },
-      }),
-    });
-
-    if (!res.ok) {
-      const errText = await res.text();
-      throw new Error(`Google AI request failed (HTTP ${res.status}): ${errText}`);
-    }
-
-    const data = await res.json();
-    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!raw) throw new Error('Google AI returned empty content');
-    return raw;
-  }
-
-  if (aiProvider === 'openai') {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${aiApiKey}`,
-      },
-      body: JSON.stringify({
-        model: aiModel,
-        messages: [
-          { role: 'system', content: params.system },
-          { role: 'user', content: params.prompt },
-        ],
-        temperature: params.temperature ?? 0.2,
-        max_tokens: params.maxTokens ?? 4096,
-        response_format: { type: 'json_object' },
-      }),
-    });
-
-    if (!res.ok) {
-      const errText = await res.text();
-      throw new Error(`OpenAI request failed (HTTP ${res.status}): ${errText}`);
-    }
-
-    const data = await res.json();
-    const content = data.choices?.[0]?.message?.content;
-    if (!content) throw new Error('OpenAI returned empty response');
-    return content;
+    throw primaryErr;
   }
 
   throw new Error(`Unsupported AI provider: ${aiProvider}`);

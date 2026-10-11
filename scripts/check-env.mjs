@@ -52,7 +52,14 @@ async function checkEnv() {
   }
 
   // Determine AI Provider
-  const provider = (process.env.AI_PROVIDER || (process.env.GROQ_API_KEY ? 'groq' : process.env.GEMINI_API_KEY ? 'google' : 'openai')).toLowerCase();
+  const provider = (
+    process.env.AI_PROVIDER ||
+    (process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY
+      ? 'google'
+      : process.env.GROQ_API_KEY
+      ? 'groq'
+      : 'openai')
+  ).toLowerCase();
   const model = process.env.AI_MODEL || (provider === 'groq' ? 'openai/gpt-oss-120b' : provider === 'google' ? 'gemini-flash-latest' : 'gpt-4o-mini');
 
   const groqKey = process.env.GROQ_API_KEY;
@@ -104,7 +111,7 @@ async function checkEnv() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               contents: [{ parts: [{ text: 'ping' }] }],
-              generationConfig: { maxOutputTokens: 5 },
+              generationConfig: { maxOutputTokens: 100 },
             }),
           }
         );

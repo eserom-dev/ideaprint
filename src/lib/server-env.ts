@@ -23,7 +23,14 @@ export function getMissingServerEnv(): string[] {
   if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) missing.push('NEXT_PUBLIC_SUPABASE_ANON_KEY');
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY) missing.push('SUPABASE_SERVICE_ROLE_KEY');
 
-  const provider = (process.env.AI_PROVIDER || (process.env.GROQ_API_KEY ? 'groq' : process.env.GEMINI_API_KEY ? 'google' : 'openai')).toLowerCase();
+  const provider = (
+    process.env.AI_PROVIDER ||
+    (process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY
+      ? 'google'
+      : process.env.GROQ_API_KEY
+      ? 'groq'
+      : 'openai')
+  ).toLowerCase();
 
   if (provider === 'groq') {
     if (!process.env.GROQ_API_KEY) missing.push('GROQ_API_KEY');
@@ -47,7 +54,11 @@ export function getMissingServerEnv(): string[] {
 export function getServerEnv(): ServerEnv {
   const provider = (
     process.env.AI_PROVIDER ||
-    (process.env.GROQ_API_KEY ? 'groq' : process.env.GEMINI_API_KEY ? 'google' : 'openai')
+    (process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY
+      ? 'google'
+      : process.env.GROQ_API_KEY
+      ? 'groq'
+      : 'openai')
   ).toLowerCase() as any;
 
   let activeApiKey = '';
