@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <defs>
+    <!-- Silver gradient for outer P -->
+    <linearGradient id="pIconGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="60%" stop-color="#E4E4E7" />
+      <stop offset="100%" stop-color="#A1A1AA" />
+    </linearGradient>
+
+    <!-- Radiant ember glow for the central spark -->
+    <radialGradient id="emberGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFA67A" />
+      <stop offset="55%" stop-color="#FF6B2C" />
+      <stop offset="100%" stop-color="#D94406" />
+    </radialGradient>
+
+    <filter id="glowFilter" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="5" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Dark container background with subtle rounded border for squircle icon -->
+  <rect width="100" height="100" rx="24" fill="#0A0A0B" />
+  <rect width="98" height="98" x="1" y="1" rx="23" stroke="#27272A" stroke-width="1.5" />
+
+  <!-- Geometric P shape -->
+  <path
+    d="M26 20 H62 C74 20 83 29 83 42 C83 55 74 64 62 64 H40 V80 H26 V20 Z"
+    fill="url(#pIconGrad)"
+  />
+
+  <!-- Eye cutout -->
+  <path
+    d="M40 33 H60 C65 33 69 37 69 42 C69 47 65 51 60 51 H40 V33 Z"
+    fill="#0A0A0B"
+  />
+
+  <!-- Glowing ember spark in the center -->
+  <circle
+    cx="54"
+    cy="42"
+    r="7.5"
+    fill="url(#emberGlow)"
+    filter="url(#glowFilter)"
+  />
+</svg>
