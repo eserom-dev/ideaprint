@@ -263,7 +263,8 @@ export function repairTruncatedJson(raw: string): string {
  */
 export async function generateStructured<T>(
   params: GatewayCallParams,
-  schema: z.ZodSchema<T>
+  schema: z.ZodSchema<T>,
+  preTransform?: (parsed: any) => any
 ): Promise<T> {
   const rawResponse = await callRawAI(params);
 
@@ -276,6 +277,14 @@ export async function generateStructured<T>(
       // Auto-heal truncated JSON
       const repaired = repairTruncatedJson(cleaned);
       parsed = JSON.parse(repaired);
+    }
+
+    if (preTransform) {
+      try {
+        parsed = preTransform(parsed);
+      } catch (tErr: any) {
+        console.warn('[AI-Gateway] preTransform warning:', tErr.message);
+      }
     }
 
     const validated = schema.safeParse(parsed);
@@ -306,6 +315,14 @@ Please return the corrected JSON that strictly satisfies the schema. Return ONLY
     } catch (_repairErr) {
       const repaired = repairTruncatedJson(repairCleaned);
       repairParsed = JSON.parse(repaired);
+    }
+
+    if (preTransform) {
+      try {
+        repairParsed = preTransform(repairParsed);
+      } catch (tErr: any) {
+        console.warn('[AI-Gateway] preTransform warning on repair:', tErr.message);
+      }
     }
 
     const repairValidated = schema.parse(repairParsed);
@@ -476,6 +493,183 @@ export const FullBlueprintSchema = z.object({
 
 export type GeneratedBlueprint = z.infer<typeof FullBlueprintSchema>;
 
+export function normalizeBlueprint(raw: any, options: {
+  projectName: string;
+  idea: string;
+  constraints?: {
+    appType?: string;
+    stack?: string[];
+    developerSkills?: string;
+    budget?: string;
+    timeline?: string;
+  };
+}): any {
+  if (!raw || typeof raw !== 'object') return raw;
+  const data = { ...raw };
+
+  data.name = data.name || options.projectName || 'New Project';
+  data.tagline = data.tagline || (typeof data.description === 'string' ? data.description.slice(0, 100) : 'Make Ideas Buildable');
+  data.description = data.description || options.idea || data.tagline;
+  data.type = data.type || options.constraints?.appType || 'Website Application';
+  data.stage = data.stage || 'plan';
+
+  data.constraints = {
+    appType: data.constraints?.appType || options.constraints?.appType || 'Website Application',
+    stack: Array.isArray(data.constraints?.stack) && data.constraints.stack.length > 0
+      ? data.constraints.stack
+      : (options.constraints?.stack || ['Next.js 14', 'TypeScript', 'Tailwind CSS', 'Supabase']),
+    skills: data.constraints?.skills || options.constraints?.developerSkills || 'TypeScript / React / PostgreSQL',
+    budget: data.constraints?.budget || options.constraints?.budget || '$0 MVP',
+    timeline: data.constraints?.timeline || options.constraints?.timeline || '4-6 Weeks',
+  };
+
+  if (Array.isArray(data.requirements)) {
+    data.requirements = data.requirements.map((r: any, idx: number) => {
+      const displayId = r.displayId || r.id || `FR-${String(idx + 1).padStart(3, '0')}`;
+      const statement = r.statement || r.title || r.description || r.name || `Requirement ${idx + 1}`;
+      const kind = r.kind === 'functional' || r.type === 'functional'
+        ? 'functional'
+        : (r.kind === 'non_functional' || r.type === 'non_functional' || r.type === 'non-functional'
+          ? 'non_functional'
+          : (displayId.startsWith('NFR') ? 'non_functional' : 'functional'));
+      const rawPriority = String(r.priority || 'must').toLowerCase();
+      const priority = ['must', 'should', 'could', 'wont'].includes(rawPriority)
+        ? rawPriority
+        : (rawPriority === 'high' || rawPriority === 'critical' ? 'must' : rawPriority === 'low' ? 'could' : 'should');
+      const category = r.category || (kind === 'functional' ? 'Core Feature' : 'Quality Attribute');
+      const rationale = r.rationale || statement;
+      const rawAc = r.acceptanceCriteria || r.acceptance_criteria || r.criteria;
+      const acceptanceCriteria = Array.isArray(rawAc) && rawAc.length > 0
+        ? rawAc.map(String)
+        : [`Given valid user input, when action is submitted, then ${statement}`];
+      const derivesFrom = Array.isArray(r.derivesFrom || r.derives_from) ? (r.derivesFrom || r.derives_from) : [];
+      const origin = ['user', 'ai_proposed', 'ai_assumed'].includes(r.origin) ? r.origin : 'ai_proposed';
+      const status = r.status === 'accepted' ? 'accepted' : 'proposed';
+      const confidence = ['low', 'medium', 'high'].includes(r.confidence) ? r.confidence : 'high';
+      const locked = !!r.locked;
+
+      return { displayId, kind, statement, priority, category, rationale, acceptanceCriteria, derivesFrom, origin, status, confidence, locked };
+    });
+  } else {
+    data.requirements = [];
+  }
+
+  if (Array.isArray(data.components)) {
+    data.components = data.components.map((c: any, idx: number) => {
+      const displayId = c.displayId || c.id || `CMP-${String(idx + 1).padStart(3, '0')}`;
+      const name = c.name || c.title || `Component ${idx + 1}`;
+      const rawType = String(c.type || 'service').toLowerCase();
+      const type = ['frontend', 'backend', 'database', 'service', 'gateway', 'worker'].includes(rawType) ? rawType : 'service';
+      const technology = c.technology || c.tech || 'TypeScript / Next.js';
+      const responsibilities = Array.isArray(c.responsibilities) && c.responsibilities.length > 0 ? c.responsibilities.map(String) : [name];
+      const satisfies = Array.isArray(c.satisfies) ? c.satisfies : [];
+      return { displayId, name, type, technology, responsibilities, satisfies, origin: 'ai_proposed', status: 'accepted' };
+    });
+  } else {
+    data.components = [];
+  }
+
+  if (Array.isArray(data.entities)) {
+    data.entities = data.entities.map((e: any, idx: number) => {
+      const displayId = e.displayId || e.id || `ENT-${String(idx + 1).padStart(3, '0')}`;
+      const name = (e.name || e.tableName || `table_${idx + 1}`).toLowerCase().replace(/[^a-z0-9_]/g, '_');
+      const description = e.description || `Data entity for ${name}`;
+      const rawFields = e.fields || e.columns || e.attributes || [];
+      const fields = Array.isArray(rawFields) && rawFields.length > 0
+        ? rawFields.map((f: any) => ({
+            name: (f.name || f.columnName || 'id').toLowerCase().replace(/[^a-z0-9_]/g, '_'),
+            type: f.type || 'text',
+            required: f.required !== undefined ? !!f.required : !f.isNullable,
+          }))
+        : [{ name: 'id', type: 'uuid', required: true }];
+      const rlsPolicies = Array.isArray(e.rlsPolicies || e.rls_policies)
+        ? (e.rlsPolicies || e.rls_policies)
+        : [`create policy ${name}_owner_isolation on ${name} for all using (owner_id = auth.uid())`];
+      return { displayId, name, description, fields, rlsPolicies, origin: 'ai_proposed', status: 'accepted' };
+    });
+  } else {
+    data.entities = [];
+  }
+
+  if (Array.isArray(data.endpoints)) {
+    data.endpoints = data.endpoints.map((ep: any, idx: number) => {
+      const displayId = ep.displayId || ep.id || `API-${String(idx + 1).padStart(3, '0')}`;
+      const path = ep.path || ep.route || `/api/v1/resource_${idx + 1}`;
+      const rawMethod = String(ep.method || 'GET').toUpperCase();
+      const method = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(rawMethod) ? rawMethod : 'GET';
+      const summary = ep.summary || ep.description || ep.title || `${method} ${path}`;
+      const authRequired = ep.authRequired !== undefined ? !!ep.authRequired : (ep.auth_required !== undefined ? !!ep.auth_required : true);
+      const parameters = Array.isArray(ep.parameters) ? ep.parameters : [];
+      const responseSchema = typeof ep.responseSchema === 'string' ? ep.responseSchema : JSON.stringify(ep.response || { success: true });
+      return { displayId, path, method, summary, authRequired, parameters, responseSchema, origin: 'ai_proposed', status: 'accepted' };
+    });
+  } else {
+    data.endpoints = [];
+  }
+
+  if (Array.isArray(data.tasks)) {
+    data.tasks = data.tasks.map((t: any, idx: number) => {
+      const displayId = t.displayId || t.id || `TSK-${String(idx + 1).padStart(3, '0')}`;
+      const title = t.title || t.name || `Task ${idx + 1}`;
+      const description = t.description || title;
+      const rawStatus = String(t.status || 'todo').toLowerCase();
+      const status = ['todo', 'in_progress', 'done'].includes(rawStatus) ? rawStatus : 'todo';
+      const rawPriority = String(t.priority || 'medium').toLowerCase();
+      const priority = ['low', 'medium', 'high', 'urgent'].includes(rawPriority) ? rawPriority : 'medium';
+      const effortMinDays = typeof t.effortMinDays === 'number' ? t.effortMinDays : 1;
+      const effortMaxDays = typeof t.effortMaxDays === 'number' ? t.effortMaxDays : 2;
+      const dependencies = Array.isArray(t.dependencies) ? t.dependencies : [];
+      return { displayId, title, description, status, priority, effortMinDays, effortMaxDays, dependencies, origin: 'ai_proposed' };
+    });
+  } else {
+    data.tasks = [];
+  }
+
+  if (Array.isArray(data.testCases || data.test_cases)) {
+    const rawTests = data.testCases || data.test_cases;
+    data.testCases = rawTests.map((tc: any, idx: number) => {
+      const displayId = tc.displayId || tc.id || `TC-${String(idx + 1).padStart(3, '0')}`;
+      const rawCat = String(tc.category || 'functional').toLowerCase();
+      const category = ['functional', 'security', 'permissions', 'edge', 'accessibility', 'reliability'].includes(rawCat) ? rawCat : 'functional';
+      const objective = tc.objective || tc.title || tc.description || `Test case ${idx + 1}`;
+      const preconditions = tc.preconditions || 'User authenticated';
+      const steps = Array.isArray(tc.steps) && tc.steps.length > 0 ? tc.steps.map(String) : [objective];
+      const expectedResult = tc.expectedResult || tc.expected_result || 'Operation succeeds with 200 OK';
+      return { displayId, category, objective, preconditions, steps, expectedResult, verification: 'not_run', origin: 'ai_proposed', status: 'accepted' };
+    });
+  } else {
+    data.testCases = [];
+  }
+
+  if (Array.isArray(data.decisions)) {
+    data.decisions = data.decisions.map((d: any, idx: number) => {
+      const displayId = d.displayId || d.id || `DEC-${String(idx + 1).padStart(3, '0')}`;
+      const context = d.context || d.problem || 'Architecture consideration';
+      const decision = d.decision || d.title || 'Selected architectural pattern';
+      const alternatives = Array.isArray(d.alternatives) ? d.alternatives : [];
+      const consequences = d.consequences || 'Ensures high maintainability and security';
+      return { displayId, context, decision, alternatives, consequences, status: 'accepted' };
+    });
+  } else {
+    data.decisions = [];
+  }
+
+  if (Array.isArray(data.risks)) {
+    data.risks = data.risks.map((r: any, idx: number) => {
+      const displayId = r.displayId || r.id || `RSK-${String(idx + 1).padStart(3, '0')}`;
+      const description = r.description || r.title || `Identified risk ${idx + 1}`;
+      const rawSev = String(r.severity || 'medium').toLowerCase();
+      const severity = ['low', 'medium', 'high', 'critical'].includes(rawSev) ? rawSev : 'medium';
+      const mitigation = r.mitigation || r.solution || 'Implement automated retries and telemetry';
+      return { displayId, description, severity, mitigation };
+    });
+  } else {
+    data.risks = [];
+  }
+
+  return data;
+}
+
 /**
  * Stage 4: Staged Blueprint Pipeline Generation
  */
@@ -484,6 +678,7 @@ export async function generateCompleteBlueprint(options: {
   projectName: string;
   clarifications: { question: string; answer: string; assumed: boolean }[];
   constraints: {
+    appType?: string;
     stack: string[];
     developerSkills?: string;
     budget?: string;
@@ -513,9 +708,108 @@ Technical Constraints:
 - Stack: ${options.constraints.stack.join(', ')}
 - Skills: ${options.constraints.developerSkills || 'TypeScript / React / PostgreSQL'}
 - Budget: ${options.constraints.budget || '$0 MVP'}
-- Timeline: ${options.constraints.timeline || '4-6 Weeks'}`;
+- Timeline: ${options.constraints.timeline || '4-6 Weeks'}
 
-  return await generateStructured({ system, prompt, temperature: 0.2 }, FullBlueprintSchema);
+JSON Skeleton to Follow (use exact property names):
+{
+  "name": "${options.projectName}",
+  "tagline": "A concise 1-sentence value proposition",
+  "description": "${options.idea.slice(0, 150).replace(/["\\]/g, ' ')}",
+  "constraints": {
+    "appType": "Website Application",
+    "stack": ${JSON.stringify(options.constraints.stack)},
+    "skills": "${options.constraints.developerSkills || 'TypeScript / React / PostgreSQL'}",
+    "budget": "${options.constraints.budget || '$0 MVP'}",
+    "timeline": "${options.constraints.timeline || '4-6 Weeks'}"
+  },
+  "requirements": [
+    {
+      "displayId": "FR-001",
+      "kind": "functional",
+      "statement": "...",
+      "priority": "must",
+      "category": "Core Feature",
+      "rationale": "...",
+      "acceptanceCriteria": ["Given... When... Then..."]
+    }
+  ],
+  "components": [
+    {
+      "displayId": "CMP-001",
+      "name": "...",
+      "type": "frontend",
+      "technology": "...",
+      "responsibilities": ["..."],
+      "satisfies": ["FR-001"]
+    }
+  ],
+  "entities": [
+    {
+      "displayId": "ENT-001",
+      "name": "users",
+      "description": "...",
+      "fields": [{ "name": "id", "type": "uuid", "required": true }],
+      "rlsPolicies": ["create policy users_isolation on users for all using (owner_id = auth.uid())"]
+    }
+  ],
+  "endpoints": [
+    {
+      "displayId": "API-001",
+      "path": "/api/...",
+      "method": "GET",
+      "summary": "...",
+      "authRequired": true,
+      "parameters": [],
+      "responseSchema": "{}"
+    }
+  ],
+  "tasks": [
+    {
+      "displayId": "TSK-001",
+      "title": "...",
+      "description": "...",
+      "status": "todo",
+      "priority": "medium",
+      "effortMinDays": 1,
+      "effortMaxDays": 2,
+      "dependencies": []
+    }
+  ],
+  "testCases": [
+    {
+      "displayId": "TC-001",
+      "category": "functional",
+      "objective": "...",
+      "preconditions": "...",
+      "steps": ["..."],
+      "expectedResult": "...",
+      "verification": "not_run"
+    }
+  ],
+  "decisions": [
+    {
+      "displayId": "DEC-001",
+      "context": "...",
+      "decision": "...",
+      "alternatives": ["..."],
+      "consequences": "..."
+    }
+  ],
+  "risks": [
+    {
+      "displayId": "RSK-001",
+      "description": "...",
+      "severity": "medium",
+      "mitigation": "..."
+    }
+  ]
+}`;
+
+  return await generateStructured(
+    { system, prompt, temperature: 0.2 },
+    FullBlueprintSchema,
+    (raw) => normalizeBlueprint(raw, options)
+  );
 }
 
 // ========================================================================
