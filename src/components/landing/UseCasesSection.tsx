@@ -106,11 +106,11 @@ export const UseCasesSection: React.FC = () => {
   const IconComponent = activePersona.icon;
 
   return (
-    <section id="use-cases" className="py-24 sm:py-32 px-4 sm:px-6 lg:px-8 bg-zinc-950 border-t border-white/5 relative">
+    <section id="use-cases" className="pt-32 pb-24 sm:pt-40 sm:pb-32 px-4 sm:px-6 lg:px-8 bg-zinc-950 border-t border-white/5 relative scroll-mt-32">
       <div className="max-w-6xl mx-auto">
         {/* Section Header */}
         <div className="flex flex-col items-center text-center mb-16">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-mono text-zinc-400 mb-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-mono text-zinc-300 mb-4">
             <span className="text-ember font-bold">USE CASES</span>
             <span>·</span>
             <span>ENGINEERED FOR YOUR ROLE</span>
@@ -120,7 +120,7 @@ export const UseCasesSection: React.FC = () => {
             Tailored workflows for <span className="metal">every builder</span>.
           </h2>
 
-          <p className="mt-4 text-base sm:text-lg text-zinc-400 max-w-2xl">
+          <p className="mt-4 text-base sm:text-lg text-zinc-200 max-w-2xl font-normal leading-relaxed">
             Whether you are coding solo on weekends or quoting six-figure client proposals, 
             IDEAPRINT keeps planning rigorous and fast.
           </p>
@@ -135,7 +135,7 @@ export const UseCasesSection: React.FC = () => {
               <button
                 key={persona.id}
                 onClick={() => setActivePersonaId(persona.id)}
-                className={`flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-full text-xs sm:text-sm font-medium transition-all ${
+                className={`whitespace-nowrap flex-shrink-0 flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-full text-xs sm:text-sm font-medium transition-all ${
                   isActive
                     ? 'bg-ember text-zinc-950 font-bold shadow-glow scale-105'
                     : 'bg-zinc-900/80 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-white/10'
@@ -149,32 +149,34 @@ export const UseCasesSection: React.FC = () => {
         </div>
 
         {/* Active Persona Showcase Card */}
-        <div className="glass-card rounded-3xl p-6 sm:p-10 border border-white/15 max-w-4xl mx-auto">
+        <div className="glass-card rounded-3xl p-6 sm:p-10 border border-white/15 max-w-4xl mx-auto shadow-2xl">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-white/10">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-ember/20 text-ember border border-ember/30 flex items-center justify-center shadow-glow-sm">
+              <div className="w-12 h-12 rounded-2xl bg-ember/20 text-ember border border-ember/30 flex items-center justify-center shadow-glow-sm flex-shrink-0">
                 <IconComponent className="w-6 h-6" />
               </div>
               <div>
                 <h3 className="text-xl sm:text-2xl font-display font-bold text-white">
-                  {activePersona.name} <span className="text-zinc-500 font-normal">· {activePersona.role}</span>
+                  {activePersona.name} <span className="text-zinc-400 font-normal text-base">· {activePersona.role}</span>
                 </h3>
-                <p className="text-sm text-zinc-400 mt-0.5">{activePersona.tagline}</p>
+                <p className="text-sm text-zinc-300 mt-0.5">{activePersona.tagline}</p>
               </div>
             </div>
 
             <Link
               href="/projects/new"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-800 hover:bg-zinc-700 text-xs font-mono text-white border border-white/10 transition-colors"
+              className="whitespace-nowrap flex-shrink-0 inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-zinc-850 hover:bg-zinc-750 text-xs font-mono font-medium text-white border border-white/15 transition-all hover:border-white/30 hover:scale-[1.02] shadow-sm"
             >
               <span>Create Blueprint</span>
               <ArrowRight className="w-3.5 h-3.5 text-ember" />
             </Link>
           </div>
 
-          {/* Job to be done quote */}
-          <div className="my-6 p-4 rounded-2xl bg-zinc-950/60 border border-white/5 font-sans text-sm sm:text-base text-zinc-300 italic border-l-4 border-l-ember">
-            "{activePersona.jobToBeDone}"
+          {/* Job to be done quote — bright white visible text */}
+          <div className="my-6 p-5 rounded-2xl bg-zinc-900/90 border border-white/15 font-sans text-sm sm:text-base border-l-4 border-l-ember shadow-inner">
+            <p className="text-zinc-100 font-medium italic leading-relaxed">
+              "{activePersona.jobToBeDone}"
+            </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">

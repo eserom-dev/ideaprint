@@ -86,7 +86,7 @@ export const FloatingNav: React.FC = () => {
             ) : (
               <Link
                 href="/sign-in"
-                className="text-xs font-medium text-zinc-200 hover:text-white px-3 py-1.5 rounded-full hover:bg-white/5 transition-colors"
+                className="whitespace-nowrap flex-shrink-0 text-xs font-medium text-zinc-200 hover:text-white px-3 py-1.5 rounded-full hover:bg-white/5 transition-colors"
               >
                 Sign in
               </Link>
@@ -94,7 +94,7 @@ export const FloatingNav: React.FC = () => {
 
             <Link
               href="/sign-up"
-              className="inline-flex items-center justify-center text-xs font-bold px-5 py-2 rounded-full bg-ember hover:bg-ember-hover text-zinc-950 shadow-glow transition-all duration-150 hover:scale-[1.02] active:scale-[0.98]"
+              className="whitespace-nowrap flex-shrink-0 inline-flex items-center justify-center text-xs font-bold px-5 py-2 rounded-full bg-ember hover:bg-ember-hover text-zinc-950 shadow-glow transition-all duration-150 hover:scale-[1.02] active:scale-[0.98]"
             >
               Get started
             </Link>

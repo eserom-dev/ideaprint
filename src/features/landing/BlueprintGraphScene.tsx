@@ -124,14 +124,6 @@ export const BlueprintGraphScene: React.FC<BlueprintGraphSceneProps> = ({ classN
           <circle cx="610" cy="260" r="3" fill="#FF6B2C" filter="url(#glowFilter)" />
           <circle cx="370" cy="420" r="2.5" fill="rgba(255, 255, 255, 0.5)" />
           <circle cx="400" cy="420" r="2.5" fill="rgba(255, 255, 255, 0.5)" />
-
-          {/* Subtle animated pulse travelling along lines */}
-          <circle cx="340" cy="310" r="2" fill="#FF8149">
-            <animate attributeName="cx" values="340; 170; 340" dur="4s" repeatCount="indefinite" />
-          </circle>
-          <circle cx="610" cy="200" r="2" fill="#FF8149">
-            <animate attributeName="cy" values="200; 320; 200" dur="5s" repeatCount="indefinite" />
-          </circle>
         </svg>
 
         {/* Ambient Floating Wireframe Cube 1 (top background) */}

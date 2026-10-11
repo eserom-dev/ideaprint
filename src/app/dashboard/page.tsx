@@ -102,7 +102,7 @@ export default function DashboardPage() {
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-900 border border-white/10 text-xs font-mono text-white">
                 <User className="w-3.5 h-3.5 text-ember" />
-                <span className="max-w-[150px] truncate">{user.email}</span>
+                <span className="max-w-[150px] truncate">{user?.email || 'Developer'}</span>
               </div>
               <button
                 onClick={() => {

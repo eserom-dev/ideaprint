@@ -149,6 +149,11 @@ export default function NewProjectWizard() {
       setPipelineProgress(100);
       setCurrentPass(passes[7]);
       setGeneratedBlueprint(data.blueprint);
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(`ideaprint_blueprint_${data.blueprint.id}`, JSON.stringify(data.blueprint));
+        } catch (e) {}
+      }
 
       setTimeout(() => {
         setIsGenerating(false);

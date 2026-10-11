@@ -33,7 +33,7 @@ export const HeroGlassInterface: React.FC = () => {
           <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
             <Link
               href="/projects/new"
-              className="w-full sm:w-auto px-8 py-4 rounded-full bg-ember hover:bg-ember-hover text-zinc-950 font-bold text-sm tracking-wide flex items-center justify-center gap-2 shadow-glow transition-all duration-150 hover:scale-[1.03] active:scale-[0.98]"
+              className="whitespace-nowrap flex-shrink-0 w-full sm:w-auto px-8 py-4 rounded-full bg-ember hover:bg-ember-hover text-zinc-950 font-bold text-sm tracking-wide flex items-center justify-center gap-2 shadow-glow transition-all duration-150 hover:scale-[1.03] active:scale-[0.98]"
             >
               <span>Build Your Blueprint</span>
               <ArrowRight className="w-4 h-4 ml-0.5" />
@@ -42,7 +42,7 @@ export const HeroGlassInterface: React.FC = () => {
             <a
               href="#scene-002"
               onClick={scrollToNextScene}
-              className="w-full sm:w-auto px-8 py-4 rounded-full bg-zinc-900/80 hover:bg-zinc-850 text-white font-semibold text-sm border border-white/20 hover:border-white/40 backdrop-blur-md transition-all duration-150 hover:scale-[1.02] active:scale-[0.98] text-center"
+              className="whitespace-nowrap flex-shrink-0 w-full sm:w-auto px-8 py-4 rounded-full bg-zinc-900/80 hover:bg-zinc-850 text-white font-semibold text-sm border border-white/20 hover:border-white/40 backdrop-blur-md transition-all duration-150 hover:scale-[1.02] active:scale-[0.98] text-center"
             >
               Explore the Platform
             </a>
