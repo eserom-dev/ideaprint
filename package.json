@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "check:env": "node scripts/check-env.mjs"
+    "check:env": "node scripts/check-env.mjs",
+    "test": "node --test tests/export-generators.test.ts tests/dag-validation.test.ts tests/ai-schemas.test.ts tests/security-env.test.ts",
+    "eval": "node scripts/evaluate-pipeline.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.3",

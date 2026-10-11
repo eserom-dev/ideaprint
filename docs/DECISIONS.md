@@ -11,3 +11,12 @@
 - DEC-009: Added `/settings` console (profile, telemetry, plan, account deletion) and server-enforced `/admin` route.
 - DEC-010: Completed legal and auth suite (`/privacy`, `/terms`, `/forgot-password`, `/reset-password`, `/auth/callback`, `/not-found`, `/error`) with Google OAuth and security headers middleware.
 - DEC-011: Added AI Code & Build Studio (`/api/code/generate` and workspace `code` tab with JSZip bundle export) turning architectural blueprints into complete, runnable codebases.
+- DEC-012: Initiated comprehensive perfection pass on branch `perfection-pass` with git tag `before-perfection-pass` to ensure 100% real implementation and zero demo artifacts.
+- DEC-013: Deleted legacy `src/lib/ai.ts` and moved `sampleProjects.ts` to `tests/fixtures/` to eliminate all mock/fallback generators from production bundle.
+- DEC-014: Added strict HTTP security headers in `src/middleware.ts` (`X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Strict-Transport-Security`, `Permissions-Policy`, `X-XSS-Protection`).
+- DEC-015: Refactored `LiveAppPreview.tsx` to initialize with empty records and dynamic entity table generation instead of static mock rows.
+- DEC-016: Replaced client-side `alert()` on project creation commit failure with an in-UI accessible error banner and retry action.
+- DEC-017: Updated landing page navbar to detect authenticated user session and show "New Blueprint" CTA linking to `/projects/new` instead of "Get started" linking to `/sign-up`.
+- DEC-018: Implemented 22-test automated unit and integration suite (`tests/export-generators.test.ts`, `tests/dag-validation.test.ts`, `tests/ai-schemas.test.ts`, `tests/security-env.test.ts`) with zero external test runners using Node's native test harness.
+- DEC-019: Created automated pipeline evaluation harness (`scripts/evaluate-pipeline.mjs`) executing real prompts against the live AI provider and validating schema integrity and latency.
+- DEC-020: Added `"allowImportingTsExtensions": true` in `tsconfig.json` ensuring seamless interoperability between Next.js bundler and Node ESM test execution.

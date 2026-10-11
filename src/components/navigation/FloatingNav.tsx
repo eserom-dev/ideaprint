@@ -75,6 +75,12 @@ export const FloatingNav: React.FC = () => {
                   <LayoutDashboard className="w-3.5 h-3.5 text-ember" />
                   <span className="max-w-[120px] truncate">{user.email?.split('@')[0]}</span>
                 </Link>
+                <Link
+                  href="/projects/new"
+                  className="whitespace-nowrap flex-shrink-0 inline-flex items-center justify-center text-xs font-bold px-4 py-2 rounded-full bg-ember hover:bg-ember-hover text-zinc-950 shadow-glow transition-all duration-150 hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  New Blueprint
+                </Link>
                 <button
                   onClick={() => signOut()}
                   title="Sign out"
@@ -84,20 +90,21 @@ export const FloatingNav: React.FC = () => {
                 </button>
               </div>
             ) : (
-              <Link
-                href="/sign-in"
-                className="whitespace-nowrap flex-shrink-0 text-xs font-medium text-zinc-300 hover:text-white px-3 py-1.5 rounded-full hover:bg-white/5 transition-colors"
-              >
-                Sign in
-              </Link>
+              <>
+                <Link
+                  href="/sign-in"
+                  className="whitespace-nowrap flex-shrink-0 text-xs font-medium text-zinc-300 hover:text-white px-3 py-1.5 rounded-full hover:bg-white/5 transition-colors"
+                >
+                  Sign in
+                </Link>
+                <Link
+                  href="/sign-up"
+                  className="whitespace-nowrap flex-shrink-0 inline-flex items-center justify-center text-xs font-bold px-5 py-2 rounded-full bg-ember hover:bg-ember-hover text-zinc-950 shadow-glow transition-all duration-150 hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  Get started
+                </Link>
+              </>
             )}
-
-            <Link
-              href="/sign-up"
-              className="whitespace-nowrap flex-shrink-0 inline-flex items-center justify-center text-xs font-bold px-5 py-2 rounded-full bg-ember hover:bg-ember-hover text-zinc-950 shadow-glow transition-all duration-150 hover:scale-[1.02] active:scale-[0.98]"
-            >
-              Get started
-            </Link>
           </div>
 
           {/* Mobile Menu Button */}

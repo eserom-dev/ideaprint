@@ -72,7 +72,7 @@ export const WorkspaceBentoScene: React.FC = () => {
                   </div>
                   <div>
                     <h3 className="font-display font-bold text-base text-white">Dependency-Guarded Task Board</h3>
-                    <span className="text-xs font-mono text-zinc-400">Interactive live demo</span>
+                    <span className="text-xs font-mono text-zinc-400">Live DAG Engine</span>
                   </div>
                 </div>
                 <div className="text-right">

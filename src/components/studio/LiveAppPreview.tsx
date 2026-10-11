@@ -51,30 +51,8 @@ export const LiveAppPreview: React.FC<LiveAppPreviewProps> = ({
     { name: 'status', type: 'string' },
   ];
 
-  // Dynamic live state for records
-  const [records, setRecords] = useState<any[]>([
-    {
-      id: 'REC-001',
-      title: `${primaryEntity} Core Instance Alpha`,
-      category: 'Production',
-      status: 'Active',
-      updatedAt: 'Just now',
-    },
-    {
-      id: 'REC-002',
-      title: `${primaryEntity} Secondary Cluster Beta`,
-      category: 'Staging',
-      status: 'Active',
-      updatedAt: '12m ago',
-    },
-    {
-      id: 'REC-003',
-      title: `${primaryEntity} Background Worker Gamma`,
-      category: 'Internal',
-      status: 'Pending',
-      updatedAt: '1h ago',
-    },
-  ]);
+  // Dynamic live state for records (starts empty, populated strictly by real user input)
+  const [records, setRecords] = useState<any[]>([]);
 
   // Form state for creating a new record
   const [newTitle, setNewTitle] = useState('');
@@ -161,22 +139,7 @@ export const LiveAppPreview: React.FC<LiveAppPreviewProps> = ({
         <div className="flex items-center gap-2">
           <button
             onClick={() => {
-              setRecords([
-                {
-                  id: 'REC-001',
-                  title: `${primaryEntity} Core Instance Alpha`,
-                  category: 'Production',
-                  status: 'Active',
-                  updatedAt: 'Just now',
-                },
-                {
-                  id: 'REC-002',
-                  title: `${primaryEntity} Secondary Cluster Beta`,
-                  category: 'Staging',
-                  status: 'Active',
-                  updatedAt: '12m ago',
-                },
-              ]);
+              setSearchQuery('');
               triggerToast('Live preview refreshed.');
             }}
             title="Reload sandbox"
@@ -336,8 +299,17 @@ export const LiveAppPreview: React.FC<LiveAppPreviewProps> = ({
                         ))
                       ) : (
                         <tr>
-                          <td colSpan={5} className="px-4 py-8 text-center text-zinc-500 font-mono text-xs">
-                            No records found matching &quot;{searchQuery}&quot;
+                          <td colSpan={5} className="px-4 py-12 text-center text-zinc-400 font-mono text-xs">
+                            <div className="flex flex-col items-center gap-2">
+                              <span className="text-zinc-500">No {primaryEntity.toLowerCase()} records created yet.</span>
+                              <button
+                                onClick={() => setShowAddModal(true)}
+                                className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-white font-sans text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                              >
+                                <Plus className="w-3.5 h-3.5" />
+                                <span>Create first {primaryEntity}</span>
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       )}

@@ -62,7 +62,7 @@ export const MermaidViewer: React.FC<MermaidViewerProps> = ({ chart, projectName
             },
           });
 
-          const uniqueId = `mermaid-${Math.random().toString(36).substring(2, 9)}`;
+          const uniqueId = `mermaid-svg-${Date.now().toString(36)}`;
           const { svg } = await window.mermaid.render(uniqueId, chart);
           if (isMounted) {
             setSvgHtml(svg);

@@ -298,7 +298,10 @@ export function generatePostgresSchema(project: ProjectExportData): string {
 
       let constraints = '';
       if (!f.isNullable) constraints += ' not null';
-      if (f.references) constraints += ` references public.${f.references}(id) on delete cascade`;
+      if (f.references) {
+        const refTable = f.references.includes('.') ? f.references.split('.')[0] : f.references;
+        constraints += ` references public.${refTable}(id) on delete cascade`;
+      }
 
       fieldLines.push(`  ${colName} ${pgType}${constraints}`);
     });

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { getServerEnv } from './server-env';
+import { getServerEnv } from './server-env.ts';
 
 // Server-side guard
 if (typeof window !== 'undefined') {
@@ -337,15 +337,14 @@ export async function generateCompleteBlueprint(options: {
 }): Promise<GeneratedBlueprint> {
   const system = `You are IDEAPRINT, the Principal Product Engineering Architect.
 Your task is to generate an exhaustive, production-grade implementation blueprint from the user's idea and architectural constraints.
-You must generate:
-- Requirements with strict displayIds (FR-001, NFR-001, etc.)
-- Components (CMP-001, etc.)
-- Database entities with exact field types and RLS policies (ENT-001)
-- REST API endpoints (API-001)
-- Tasks organized with strict dependency DAG (TSK-001)
-- Test cases with verification strictly set to "not_run" (TC-001)
-- Architecture Decision Records (DEC-001)
-- Risk Register (RSK-001)
+Rigor Requirements:
+1. Requirements: Each must have stable displayIds (FR-001, NFR-001). Acceptance criteria MUST be specific and testable (e.g. Given/When/Then or measurable latency/error thresholds).
+2. Entities: Table names must be snake_case. Every entity must specify primary key (uuid default gen_random_uuid()), foreign keys, and production-ready PostgreSQL Row Level Security (RLS) policies (e.g. "create policy tenant_isolation on table for all using (owner_id = auth.uid())").
+3. Endpoints: Standard REST endpoints (GET, POST, PUT, PATCH, DELETE) with path parameters, request bodies, and RFC-compliant JSON responses.
+4. Tasks: Organized as a directed acyclic graph (DAG) with explicit prerequisite dependencies in the "dependencies" array.
+5. Testing Lab: Every test case must have concrete steps and expected results, and verification MUST be strictly set to "not_run" (never claim tests passed without execution).
+6. Architecture Decisions: Formal ADR format with context, decision, rejected alternatives, and consequences.
+7. Risk Register: Identified failure modes with explicit mitigation strategies.
 
 Return ONLY valid JSON matching the complete blueprint schema.`;
 
@@ -360,7 +359,7 @@ Technical Constraints:
 - Budget: ${options.constraints.budget || '$0 MVP'}
 - Timeline: ${options.constraints.timeline || '4-6 Weeks'}`;
 
-  return await generateStructured({ system, prompt }, FullBlueprintSchema);
+  return await generateStructured({ system, prompt, temperature: 0.2 }, FullBlueprintSchema);
 }
 
 // ========================================================================

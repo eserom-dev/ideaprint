@@ -70,6 +70,7 @@ export default function NewProjectWizard() {
   // Step 4: Review State
   const [activeReviewTab, setActiveReviewTab] = useState<'requirements' | 'architecture' | 'database' | 'api' | 'tasks' | 'testing'>('requirements');
   const [isCommitting, setIsCommitting] = useState(false);
+  const [commitError, setCommitError] = useState<string | null>(null);
 
   // Enforce authentication
   useEffect(() => {
@@ -212,6 +213,7 @@ export default function NewProjectWizard() {
   const handleCommitBlueprint = async () => {
     if (!generatedBlueprint) return;
     setIsCommitting(true);
+    setCommitError(null);
 
     try {
       const res = await fetch('/api/projects/save', {
@@ -231,7 +233,7 @@ export default function NewProjectWizard() {
       // Route directly to workspace
       router.push(`/projects/${data.projectId}`);
     } catch (err: any) {
-      alert(`Error committing project: ${err.message}`);
+      setCommitError(err.message || 'Failed to commit project blueprint to database.');
       setIsCommitting(false);
     }
   };
@@ -571,6 +573,19 @@ export default function NewProjectWizard() {
                 )}
               </button>
             </div>
+
+            {commitError && (
+              <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-mono flex items-center gap-2.5">
+                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                <div className="flex-1">{commitError}</div>
+                <button
+                  onClick={handleCommitBlueprint}
+                  className="px-3 py-1 rounded-lg bg-rose-500 text-white font-bold text-[11px] hover:bg-rose-600 transition-colors cursor-pointer"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
 
             {/* Review Navigation Tabs */}
             <div className="flex flex-wrap items-center gap-1.5 p-1 rounded-xl bg-zinc-900 border border-white/10 text-xs font-mono">
