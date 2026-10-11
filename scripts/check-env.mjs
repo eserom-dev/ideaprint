@@ -60,7 +60,7 @@ async function checkEnv() {
       ? 'groq'
       : 'openai')
   ).toLowerCase();
-  const model = process.env.AI_MODEL || (provider === 'groq' ? 'openai/gpt-oss-120b' : provider === 'google' ? 'gemini-flash-latest' : 'gpt-4o-mini');
+  const model = process.env.AI_MODEL || (provider === 'groq' ? 'openai/gpt-oss-120b' : provider === 'google' ? 'gemini-3.5-flash' : 'gpt-4o-mini');
 
   const groqKey = process.env.GROQ_API_KEY;
   const geminiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY;

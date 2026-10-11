@@ -46,36 +46,66 @@ async function callGroqDirect(params: GatewayCallParams, model: string, apiKey: 
   return content;
 }
 
-async function callGoogleDirect(params: GatewayCallParams, model: string, apiKey: string): Promise<string> {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [
-        {
-          parts: [{ text: `${params.system}\n\nUser Request:\n${params.prompt}` }],
-        },
-      ],
-      generationConfig: {
-        temperature: params.temperature ?? 0.2,
-        maxOutputTokens: params.maxTokens ?? 8192,
-        responseMimeType: 'application/json',
-      },
-    }),
-  });
+const GOOGLE_MODELS_POOL = [
+  'gemini-3.5-flash',
+  'gemini-3.5-flash-lite',
+  'gemini-3.1-flash-lite',
+  'gemini-3-flash-preview',
+  'gemini-flash-latest',
+];
 
-  if (!res.ok) {
-    const errText = await res.text();
-    const err: any = new Error(`Google AI request failed (HTTP ${res.status}): ${errText}`);
-    err.status = res.status;
-    throw err;
+async function callGoogleDirect(params: GatewayCallParams, primaryModel: string, apiKey: string): Promise<string> {
+  const modelsToTry = [primaryModel, ...GOOGLE_MODELS_POOL.filter((m) => m !== primaryModel)];
+  let lastError: any = null;
+
+  for (const model of modelsToTry) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [{ text: `${params.system}\n\nUser Request:\n${params.prompt}` }],
+            },
+          ],
+          generationConfig: {
+            temperature: params.temperature ?? 0.2,
+            maxOutputTokens: params.maxTokens ?? 8192,
+            responseMimeType: 'application/json',
+          },
+        }),
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        const err: any = new Error(`Google AI (${model}) request failed (HTTP ${res.status}): ${errText}`);
+        err.status = res.status;
+        lastError = err;
+        if (res.status === 503 || res.status === 429 || res.status === 404) {
+          console.warn(`[AI-Gateway] Google model ${model} returned HTTP ${res.status}. Trying next model in pool...`);
+          continue;
+        }
+        throw err;
+      }
+
+      const data = await res.json();
+      const raw = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!raw) {
+        throw new Error(`Google AI (${model}) returned empty content`);
+      }
+      return raw;
+    } catch (err: any) {
+      lastError = err;
+      if (err.status === 503 || err.status === 429 || err.status === 404 || /503|429|demand|overload|exhaust/i.test(err.message)) {
+        continue;
+      }
+      throw err;
+    }
   }
 
-  const data = await res.json();
-  const raw = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!raw) throw new Error('Google AI returned empty content');
-  return raw;
+  throw lastError || new Error('All Google Gemini models in pool were unavailable.');
 }
 
 async function callOpenAIDirect(params: GatewayCallParams, model: string, apiKey: string): Promise<string> {
@@ -129,7 +159,8 @@ export async function callRawAI(params: GatewayCallParams): Promise<string> {
     const isRateOrPayloadLimit =
       primaryErr.status === 413 ||
       primaryErr.status === 429 ||
-      /rate_limit|too large|TPM|exceeded/i.test(primaryErr.message);
+      primaryErr.status === 503 ||
+      /rate_limit|too large|TPM|exceeded|demand|overload/i.test(primaryErr.message);
 
     if (aiProvider === 'groq' && isRateOrPayloadLimit) {
       const backupGoogleKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY;
@@ -137,7 +168,7 @@ export async function callRawAI(params: GatewayCallParams): Promise<string> {
         console.warn(
           `[AI-Gateway] Groq token/rate limit encountered (${primaryErr.message}). Automatically falling back to Google Gemini...`
         );
-        return await callGoogleDirect(params, 'gemini-flash-latest', backupGoogleKey);
+        return await callGoogleDirect(params, 'gemini-3.5-flash', backupGoogleKey);
       }
     } else if ((aiProvider === 'google' || aiProvider === 'gemini') && isRateOrPayloadLimit) {
       const backupGroqKey = process.env.GROQ_API_KEY;
@@ -164,7 +195,71 @@ function cleanJsonString(raw: string): string {
 }
 
 /**
- * Structured Generation with Zod Schema Validation and 1 Automatic Repair Attempt
+ * Heals truncated JSON strings by balancing open braces, brackets, and quotes
+ */
+export function repairTruncatedJson(raw: string): string {
+  let str = raw.trim();
+  try {
+    JSON.parse(str);
+    return str;
+  } catch (_) {}
+
+  str = str.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
+
+  let inString = false;
+  let escaped = false;
+  for (let i = 0; i < str.length; i++) {
+    const char = str[i];
+    if (char === '\\' && inString) {
+      escaped = !escaped;
+    } else if (char === '"' && !escaped) {
+      inString = !inString;
+    } else {
+      escaped = false;
+    }
+  }
+
+  if (inString) {
+    str += '"';
+  }
+
+  str = str.replace(/,\s*([}\]])/g, '$1');
+  str = str.replace(/,\s*$/g, '');
+  str = str.replace(/:\s*$/g, ': null');
+
+  const stack: string[] = [];
+  let inStr = false;
+  let isEsc = false;
+
+  for (let i = 0; i < str.length; i++) {
+    const char = str[i];
+    if (char === '\\' && inStr) {
+      isEsc = !isEsc;
+    } else if (char === '"' && !isEsc) {
+      inStr = !inStr;
+    } else if (!inStr) {
+      if (char === '{') stack.push('}');
+      else if (char === '[') stack.push(']');
+      else if (char === '}' || char === ']') {
+        if (stack.length > 0 && stack[stack.length - 1] === char) {
+          stack.pop();
+        }
+      }
+    } else {
+      isEsc = false;
+    }
+  }
+
+  while (stack.length > 0) {
+    str += stack.pop();
+  }
+
+  str = str.replace(/,\s*([}\]])/g, '$1');
+  return str;
+}
+
+/**
+ * Structured Generation with Zod Schema Validation, Automatic Truncation Healing, and 1 Repair Attempt
  */
 export async function generateStructured<T>(
   params: GatewayCallParams,
@@ -174,7 +269,15 @@ export async function generateStructured<T>(
 
   try {
     const cleaned = cleanJsonString(rawResponse);
-    const parsed = JSON.parse(cleaned);
+    let parsed: any;
+    try {
+      parsed = JSON.parse(cleaned);
+    } catch (_parseErr) {
+      // Auto-heal truncated JSON
+      const repaired = repairTruncatedJson(cleaned);
+      parsed = JSON.parse(repaired);
+    }
+
     const validated = schema.safeParse(parsed);
     if (validated.success) {
       return validated.data;
@@ -197,7 +300,14 @@ Please return the corrected JSON that strictly satisfies the schema. Return ONLY
     });
 
     const repairCleaned = cleanJsonString(repairRaw);
-    const repairParsed = JSON.parse(repairCleaned);
+    let repairParsed: any;
+    try {
+      repairParsed = JSON.parse(repairCleaned);
+    } catch (_repairErr) {
+      const repaired = repairTruncatedJson(repairCleaned);
+      repairParsed = JSON.parse(repaired);
+    }
+
     const repairValidated = schema.parse(repairParsed);
     return repairValidated;
   } catch (err: any) {
@@ -381,16 +491,17 @@ export async function generateCompleteBlueprint(options: {
   };
 }): Promise<GeneratedBlueprint> {
   const system = `You are IDEAPRINT, the Principal Product Engineering Architect.
-Your task is to generate an exhaustive, production-grade implementation blueprint from the user's idea and architectural constraints.
+Your task is to generate a comprehensive, production-grade implementation blueprint from the user's idea and architectural constraints.
 Rigor Requirements:
-1. Requirements: Each must have stable displayIds (FR-001, NFR-001). Acceptance criteria MUST be specific and testable (e.g. Given/When/Then or measurable latency/error thresholds).
-2. Entities: Table names must be snake_case. Every entity must specify primary key (uuid default gen_random_uuid()), foreign keys, and production-ready PostgreSQL Row Level Security (RLS) policies (e.g. "create policy tenant_isolation on table for all using (owner_id = auth.uid())").
-3. Endpoints: Standard REST endpoints (GET, POST, PUT, PATCH, DELETE) with path parameters, request bodies, and RFC-compliant JSON responses.
-4. Tasks: Organized as a directed acyclic graph (DAG) with explicit prerequisite dependencies in the "dependencies" array.
-5. Testing Lab: Every test case must have concrete steps and expected results, and verification MUST be strictly set to "not_run" (never claim tests passed without execution).
-6. Architecture Decisions: Formal ADR format with context, decision, rejected alternatives, and consequences.
-7. Risk Register: Identified failure modes with explicit mitigation strategies.
+1. Requirements: 4-6 essential Functional Requirements (FR-001, FR-002...) and 2-3 Non-Functional Requirements (NFR-001...). Each acceptance criteria must be crisp and testable (e.g. Given/When/Then).
+2. Entities: 4-6 primary database tables (snake_case). Specify primary keys, foreign keys, and production-ready PostgreSQL Row Level Security (RLS) policies (e.g. "create policy tenant_isolation on table for all using (owner_id = auth.uid())").
+3. Endpoints: 5-8 REST endpoints (GET, POST, PUT, DELETE) with path parameters, request bodies, and RFC-compliant JSON responses.
+4. Tasks: 8-12 DAG-ordered tasks with explicit prerequisite dependencies in the "dependencies" array.
+5. Testing Lab: 4-6 test cases with concrete steps and expected results, verification strictly set to "not_run".
+6. Architecture Decisions: 3-4 formal ADRs with context, decision, rejected alternatives, and consequences.
+7. Risk Register: 3-4 key technical risks with explicit mitigation strategies.
 
+Keep architectural descriptions dense, precise, and concise without repetitive prose padding so the output stays within token boundaries.
 Return ONLY valid JSON matching the complete blueprint schema.`;
 
   const prompt = `Project Name: ${options.projectName}

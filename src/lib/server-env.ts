@@ -81,7 +81,7 @@ export function getServerEnv(): ServerEnv {
     (provider === 'groq'
       ? 'openai/gpt-oss-120b'
       : provider === 'google' || provider === 'gemini'
-      ? 'gemini-flash-latest'
+      ? 'gemini-3.5-flash'
       : 'gpt-4o-mini');
 
   const raw = {
