@@ -31,46 +31,38 @@ export const FloatingNav: React.FC = () => {
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 z-50 flex justify-center px-4 sm:px-6 pt-3 sm:pt-4 pointer-events-none">
+      <header className="fixed top-0 left-0 right-0 z-50 flex justify-center px-4 sm:px-6 pt-3 sm:pt-5 pointer-events-none">
         <div
-          className={`pointer-events-auto transition-all duration-300 w-full max-w-7xl mx-auto flex items-center justify-between px-4 sm:px-6 py-2.5 rounded-full ${
+          className={`pointer-events-auto transition-all duration-300 w-full max-w-7xl mx-auto flex items-center justify-between px-5 sm:px-6 py-2.5 rounded-full ${
             isScrolled
-              ? 'bg-black/90 backdrop-blur-2xl border border-white/15 shadow-2xl'
-              : 'bg-black/60 backdrop-blur-xl border border-white/10'
+              ? 'bg-zinc-950/90 backdrop-blur-2xl border border-white/15 shadow-2xl'
+              : 'bg-zinc-950/75 backdrop-blur-xl border border-white/10'
           }`}
         >
-          {/* Logo & Brand */}
-          <div className="flex items-center gap-6 sm:gap-8">
-            <Link href="/" className="flex items-center gap-2 group">
-              {/* Minimalist White Geometric Triangle Icon matching reference */}
-              <svg width="22" height="20" viewBox="0 0 24 22" fill="none" className="text-white flex-shrink-0 transition-transform group-hover:scale-105">
-                <path d="M12 2L23 21H1L12 2Z" fill="white" />
-              </svg>
-              <span className="font-sans font-bold text-sm tracking-tight text-white hidden sm:inline">
-                IDEAPRINT
-              </span>
-            </Link>
+          {/* Authentic IDEAPRINT Brand Logo */}
+          <Link href="/" className="flex items-center gap-2 group">
+            <Logo size="sm" />
+          </Link>
 
-            {/* Desktop Navigation Links */}
-            <nav className="hidden md:flex items-center gap-1 sm:gap-2">
-              {navLinks.map((link) => {
-                const isActive = pathname === link.href;
-                return (
-                  <Link
-                    key={link.label}
-                    href={link.href}
-                    className={`text-xs font-normal px-3 py-1.5 rounded-full transition-colors ${
-                      isActive
-                        ? 'text-white font-medium bg-white/10'
-                        : 'text-zinc-400 hover:text-white'
-                    }`}
-                  >
-                    {link.label}
-                  </Link>
-                );
-              })}
-            </nav>
-          </div>
+          {/* Desktop Navigation Links */}
+          <nav className="hidden md:flex items-center gap-1 sm:gap-2">
+            {navLinks.map((link) => {
+              const isActive = pathname === link.href;
+              return (
+                <Link
+                  key={link.label}
+                  href={link.href}
+                  className={`text-xs font-medium px-3.5 py-1.5 rounded-full transition-all duration-150 ${
+                    isActive
+                      ? 'text-white bg-white/15 font-semibold'
+                      : 'text-zinc-300 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
+          </nav>
 
           {/* Right Action Buttons */}
           <div className="hidden sm:flex items-center gap-3">
@@ -78,7 +70,7 @@ export const FloatingNav: React.FC = () => {
               <div className="flex items-center gap-2">
                 <Link
                   href="/dashboard"
-                  className="flex items-center gap-1.5 text-xs font-mono text-zinc-200 hover:text-white px-3 py-1.5 rounded-full hover:bg-white/5 border border-white/10 transition-colors"
+                  className="whitespace-nowrap flex-shrink-0 flex items-center gap-1.5 text-xs font-mono text-zinc-200 hover:text-white px-3 py-1.5 rounded-full hover:bg-white/5 border border-white/10 transition-colors"
                 >
                   <LayoutDashboard className="w-3.5 h-3.5 text-ember" />
                   <span className="max-w-[120px] truncate">{user.email?.split('@')[0]}</span>
@@ -86,35 +78,26 @@ export const FloatingNav: React.FC = () => {
                 <button
                   onClick={() => signOut()}
                   title="Sign out"
-                  className="p-1.5 text-zinc-400 hover:text-rose-400 rounded-full hover:bg-white/5 transition-colors"
+                  className="p-1.5 text-zinc-400 hover:text-rose-400 rounded-full hover:bg-white/5 transition-colors cursor-pointer"
                 >
                   <LogOut className="w-3.5 h-3.5" />
                 </button>
               </div>
             ) : (
-              <>
-                <Link
-                  href="/docs"
-                  className="whitespace-nowrap flex-shrink-0 text-xs font-medium text-zinc-300 hover:text-white px-3.5 py-1.5 rounded-full border border-white/15 hover:border-white/30 bg-zinc-900/40 transition-colors"
-                >
-                  Get a Demo
-                </Link>
-
-                <Link
-                  href="/sign-in"
-                  className="whitespace-nowrap flex-shrink-0 text-xs font-medium text-zinc-400 hover:text-white px-2.5 py-1.5 transition-colors"
-                >
-                  Log In
-                </Link>
-
-                <Link
-                  href="/sign-up"
-                  className="whitespace-nowrap flex-shrink-0 inline-flex items-center justify-center text-xs font-semibold px-4 py-1.5 rounded-full bg-white hover:bg-zinc-200 text-zinc-950 transition-all duration-150 hover:scale-[1.02] active:scale-[0.98]"
-                >
-                  Sign Up
-                </Link>
-              </>
+              <Link
+                href="/sign-in"
+                className="whitespace-nowrap flex-shrink-0 text-xs font-medium text-zinc-300 hover:text-white px-3 py-1.5 rounded-full hover:bg-white/5 transition-colors"
+              >
+                Sign in
+              </Link>
             )}
+
+            <Link
+              href="/sign-up"
+              className="whitespace-nowrap flex-shrink-0 inline-flex items-center justify-center text-xs font-bold px-5 py-2 rounded-full bg-ember hover:bg-ember-hover text-zinc-950 shadow-glow transition-all duration-150 hover:scale-[1.02] active:scale-[0.98]"
+            >
+              Get started
+            </Link>
           </div>
 
           {/* Mobile Menu Button */}
