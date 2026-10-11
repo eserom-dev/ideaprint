@@ -7,6 +7,7 @@ import { Logo } from '@/components/brand/Logo';
 import { supabase } from '@/lib/supabase';
 import type { ProjectData, TaskItem, TestCaseItem } from '@/types/blueprint';
 import { ProvenanceBadge, PriorityBadge, VerificationBadge } from '@/components/ui/ProvenanceBadge';
+import { CodeStudio } from '@/components/studio/CodeStudio';
 import {
   Layers,
   Cpu,
@@ -35,6 +36,7 @@ import {
 
 type WorkspaceTab =
   | 'overview'
+  | 'code'
   | 'blueprint'
   | 'architecture'
   | 'database'
@@ -238,6 +240,7 @@ function ProjectWorkspaceContent() {
 
   const navItems = [
     { id: 'overview', label: 'Overview & Health', icon: Activity },
+    { id: 'code', label: 'AI Code & Build Studio', icon: Code2, count: 7 },
     { id: 'blueprint', label: 'Blueprint Specs', icon: Layers, count: (project.requirements || []).length },
     { id: 'architecture', label: 'Architecture Studio', icon: Cpu, count: (project.components || []).length },
     { id: 'database', label: 'Database Designer', icon: Database, count: (project.entities || []).length },
@@ -381,6 +384,33 @@ function ProjectWorkspaceContent() {
                 </div>
               </div>
 
+              {/* Full-Stack Code & Build Studio Banner */}
+              <div className="p-6 rounded-2xl bg-gradient-to-r from-zinc-900 via-zinc-900 to-ember/10 border border-ember/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-glow-sm">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    <span className="text-xs font-mono uppercase tracking-wider font-bold text-ember">
+                      Full-Stack Project Development
+                    </span>
+                  </div>
+                  <h3 className="text-lg font-display font-bold text-white">
+                    Develop & Build Complete Codebase
+                  </h3>
+                  <p className="text-xs text-zinc-300 font-sans max-w-xl">
+                    Synthesize runnable Next.js 14, TypeScript, Supabase PostgreSQL, and Tailwind CSS code files directly from this blueprint. Download as a ready-to-run ZIP project archive.
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setActiveTab('code')}
+                  className="whitespace-nowrap flex-shrink-0 px-5 py-2.5 rounded-full bg-ember hover:bg-ember-hover text-zinc-950 font-mono text-xs font-bold uppercase tracking-wider flex items-center gap-2 shadow-glow transition-all hover:scale-[1.03] active:scale-[0.98] cursor-pointer"
+                >
+                  <Code2 className="w-4 h-4" />
+                  <span>Open Code Studio</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+
               {/* Next Unblocked Tasks */}
               <div className="glass-card p-6 rounded-2xl border border-white/10">
                 <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/10">
@@ -410,6 +440,11 @@ function ProjectWorkspaceContent() {
                 </div>
               </div>
             </div>
+          )}
+
+          {/* TAB: AI CODE & BUILD STUDIO */}
+          {activeTab === 'code' && (
+            <CodeStudio project={project} />
           )}
 
           {/* TAB 2: BLUEPRINT SPECS */}

@@ -10,3 +10,4 @@
 - DEC-008: Replaced sample data dependencies with direct Supabase PostgreSQL persistence and real-time empty states.
 - DEC-009: Added `/settings` console (profile, telemetry, plan, account deletion) and server-enforced `/admin` route.
 - DEC-010: Completed legal and auth suite (`/privacy`, `/terms`, `/forgot-password`, `/reset-password`, `/auth/callback`, `/not-found`, `/error`) with Google OAuth and security headers middleware.
+- DEC-011: Added AI Code & Build Studio (`/api/code/generate` and workspace `code` tab with JSZip bundle export) turning architectural blueprints into complete, runnable codebases.
