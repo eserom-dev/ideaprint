@@ -206,6 +206,14 @@ export function repairTruncatedJson(raw: string): string {
 
   str = str.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
 
+  // 1. Sanitize invalid escape sequences (e.g. \d, \s, \w, \., \+, etc. in generated code strings)
+  str = str.replace(/\\(?!["\\/bfnrt]|u[0-9a-fA-F]{4})/g, '\\\\');
+
+  try {
+    JSON.parse(str);
+    return str;
+  } catch (_) {}
+
   let inString = false;
   let escaped = false;
   for (let i = 0; i < str.length; i++) {
@@ -255,6 +263,7 @@ export function repairTruncatedJson(raw: string): string {
   }
 
   str = str.replace(/,\s*([}\]])/g, '$1');
+  str = str.replace(/\\(?!["\\/bfnrt]|u[0-9a-fA-F]{4})/g, '\\\\');
   return str;
 }
 
