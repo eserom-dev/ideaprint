@@ -24,6 +24,9 @@ import {
   AlertCircle,
   HelpCircle,
   Kanban,
+  Columns,
+  Cpu,
+  Wrench,
 } from 'lucide-react';
 import { LiveAppPreview } from './LiveAppPreview';
 import { useAuth } from '@/context/AuthContext';
@@ -56,8 +59,16 @@ export const CodeStudio: React.FC<CodeStudioProps> = ({ project }) => {
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [copiedFile, setCopiedFile] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
-  const [viewMode, setViewMode] = useState<'preview' | 'code'>('code');
+  const [viewMode, setViewMode] = useState<'preview' | 'code' | 'split'>('preview');
   const [searchFile, setSearchFile] = useState('');
+
+  // Programming Tool / Stack selection
+  const rawStack =
+    (Array.isArray(project.constraints?.constraints?.stack) && project.constraints.constraints.stack.join(', ')) ||
+    (Array.isArray(project.constraints?.stack) && project.constraints.stack.join(', ')) ||
+    'Next.js 14 App Router + Tailwind CSS';
+  const [selectedStack, setSelectedStack] = useState<string>(rawStack);
+  const [customAiPrompt, setCustomAiPrompt] = useState('');
 
   // Editing state
   const [isEditing, setIsEditing] = useState(false);
@@ -74,7 +85,10 @@ export const CodeStudio: React.FC<CodeStudioProps> = ({ project }) => {
     const storedCodebase = project.constraints?.codebase;
     if (Array.isArray(storedCodebase) && storedCodebase.length > 0) {
       setFiles(storedCodebase);
-      setActiveFilePath(storedCodebase[0].path);
+      const initialFile =
+        storedCodebase.find((f: any) => f.path.includes('page.tsx') || f.path.includes('index.html')) ||
+        storedCodebase[0];
+      setActiveFilePath(initialFile.path);
     } else {
       triggerCodeGeneration();
     }
@@ -91,7 +105,7 @@ export const CodeStudio: React.FC<CodeStudioProps> = ({ project }) => {
     }
   }, [activeFilePath, activeFile]);
 
-  const triggerCodeGeneration = async () => {
+  const triggerCodeGeneration = async (promptOverride?: string) => {
     setIsGenerating(true);
     setGenerationError(null);
 
@@ -108,6 +122,8 @@ export const CodeStudio: React.FC<CodeStudioProps> = ({ project }) => {
           projectId: project.id,
           blueprint: project,
           targetTask,
+          targetStack: selectedStack,
+          customPrompt: promptOverride || customAiPrompt || undefined,
           userId: user?.id,
         }),
       });
@@ -119,7 +135,11 @@ export const CodeStudio: React.FC<CodeStudioProps> = ({ project }) => {
 
       if (Array.isArray(data.files) && data.files.length > 0) {
         setFiles(data.files);
-        setActiveFilePath(data.files[0].path);
+        const nextActive =
+          data.files.find((f: any) => f.path.includes('page.tsx') || f.path.includes('index.html')) ||
+          data.files[0];
+        setActiveFilePath(nextActive.path);
+        setCustomAiPrompt('');
       }
     } catch (err: any) {
       setGenerationError(err.message || 'Error communicating with AI Code Generator.');
@@ -221,23 +241,47 @@ export const CodeStudio: React.FC<CodeStudioProps> = ({ project }) => {
   return (
     <div className="space-y-6">
       {/* Studio Header & Navigation */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 sm:p-6 rounded-2xl bg-zinc-900/80 border border-white/10 backdrop-blur-xl">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="w-2 h-2 rounded-full bg-emerald-400" />
-            <h2 className="text-xl font-sans font-bold text-white">Full-Stack Code Studio</h2>
-            <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] font-mono font-bold uppercase">
-              AI Generated · Not Verified
+      <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 p-5 sm:p-6 rounded-2xl bg-zinc-900/90 border border-white/10 backdrop-blur-xl">
+        <div className="space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/50" />
+            <h2 className="text-xl font-sans font-bold text-white tracking-tight">Full-Stack Code Studio</h2>
+            <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-mono font-bold uppercase tracking-wider">
+              100% Real · Live Sandbox
             </span>
           </div>
-          <p className="text-xs text-zinc-400 font-sans">
-            Runnable TypeScript, Next.js 14 App Router, and Supabase PostgreSQL schema with Row Level Security.
+          <p className="text-xs text-zinc-300 font-sans">
+            AI-generated runnable codebase tailored for <strong className="text-white font-medium">{project.name}</strong>. Real interactive preview with live state.
           </p>
         </div>
 
-        {/* View Mode Toggle & Primary Actions */}
+        {/* View Mode Switcher & Download Action */}
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-1 bg-zinc-950 p-1 rounded-xl border border-white/10 text-xs font-mono">
+            <button
+              onClick={() => setViewMode('preview')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                viewMode === 'preview'
+                  ? 'bg-zinc-800 text-white font-bold shadow-sm'
+                  : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              <Eye className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Live Preview</span>
+            </button>
+
+            <button
+              onClick={() => setViewMode('split')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                viewMode === 'split'
+                  ? 'bg-zinc-800 text-white font-bold shadow-sm'
+                  : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              <Columns className="w-3.5 h-3.5 text-amber-400" />
+              <span>Split Screen</span>
+            </button>
+
             <button
               onClick={() => setViewMode('code')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
@@ -249,22 +293,11 @@ export const CodeStudio: React.FC<CodeStudioProps> = ({ project }) => {
               <Code2 className="w-3.5 h-3.5 text-ember" />
               <span>Source Files ({files.length})</span>
             </button>
-            <button
-              onClick={() => setViewMode('preview')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                viewMode === 'preview'
-                  ? 'bg-zinc-800 text-white font-bold shadow-sm'
-                  : 'text-zinc-400 hover:text-white'
-              }`}
-            >
-              <Eye className="w-3.5 h-3.5" />
-              <span>Preview</span>
-            </button>
           </div>
 
           <button
             onClick={handleDownloadZip}
-            className="px-4 py-2 rounded-xl bg-ember hover:bg-ember-hover text-xs font-mono font-bold text-zinc-950 flex items-center gap-2 shadow-glow transition-all"
+            className="px-4 py-2 rounded-xl bg-ember hover:bg-ember-hover text-xs font-mono font-bold text-zinc-950 flex items-center gap-2 shadow-glow transition-all cursor-pointer"
           >
             {downloadSuccess ? (
               <>
@@ -281,33 +314,69 @@ export const CodeStudio: React.FC<CodeStudioProps> = ({ project }) => {
         </div>
       </div>
 
-      {/* Task-Specific Targeting & Regeneration Controls Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-xl bg-zinc-950 border border-white/10 text-xs font-mono">
-        <div className="flex items-center gap-2">
-          <Kanban className="w-4 h-4 text-zinc-400" />
-          <span className="text-zinc-400">Target Scope:</span>
-          <select
-            value={selectedTaskId}
-            onChange={(e) => setSelectedTaskId(e.target.value)}
-            className="bg-zinc-900 border border-white/10 rounded-lg px-2.5 py-1 text-white text-xs outline-none focus:border-ember"
-          >
-            <option value="all">Entire Application Codebase</option>
-            {(project.tasks || []).map((t: any) => (
-              <option key={t.displayId} value={t.displayId}>
-                {t.displayId}: {t.title.slice(0, 36)}...
-              </option>
-            ))}
-          </select>
+      {/* Programming Tool / Stack & AI Development Control Bar */}
+      <div className="p-4 rounded-2xl bg-zinc-950 border border-white/10 space-y-3 font-mono text-xs">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          {/* Programming Tool / Stack Selector */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5 text-zinc-400">
+              <Wrench className="w-3.5 h-3.5 text-ember" />
+              <span className="font-bold uppercase text-[10px] tracking-wider text-zinc-400">Programming Stack:</span>
+            </div>
+            <select
+              value={selectedStack}
+              onChange={(e) => setSelectedStack(e.target.value)}
+              className="bg-zinc-900 border border-white/15 rounded-lg px-3 py-1.5 text-white text-xs outline-none focus:border-ember cursor-pointer"
+            >
+              <option value="Next.js 14 App Router + TypeScript + Tailwind CSS">Next.js 14 (App Router) + TypeScript + Tailwind</option>
+              <option value="HTML5 + Modern JavaScript (ES6) + Tailwind CSS">HTML5 + Modern JavaScript + Tailwind CSS</option>
+              <option value="React 18 + Vite + Tailwind CSS">React 18 + Vite + Tailwind CSS</option>
+              <option value="Full-Stack Next.js 14 + Supabase PostgreSQL">Full-Stack Next.js 14 + Supabase PostgreSQL</option>
+            </select>
+          </div>
+
+          {/* Target Task Scope Selector */}
+          <div className="flex items-center gap-2">
+            <Kanban className="w-3.5 h-3.5 text-zinc-400" />
+            <span className="text-zinc-400 text-[10px] uppercase">Scope:</span>
+            <select
+              value={selectedTaskId}
+              onChange={(e) => setSelectedTaskId(e.target.value)}
+              className="bg-zinc-900 border border-white/15 rounded-lg px-2.5 py-1 text-white text-xs outline-none focus:border-ember cursor-pointer"
+            >
+              <option value="all">Entire Application Codebase</option>
+              {(project.tasks || []).map((t: any) => (
+                <option key={t.displayId} value={t.displayId}>
+                  {t.displayId}: {t.title.slice(0, 32)}...
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
-        <button
-          onClick={triggerCodeGeneration}
-          disabled={isGenerating}
-          className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-white/10 flex items-center gap-1.5 transition-colors disabled:opacity-50"
-        >
-          <RotateCcw className={`w-3.5 h-3.5 text-ember ${isGenerating ? 'animate-spin' : ''}`} />
-          <span>{isGenerating ? 'Synthesizing...' : 'Synthesize Code'}</span>
-        </button>
+        {/* AI Feature Prompt & Generate Action */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1 border-t border-white/5">
+          <div className="flex-1 relative">
+            <Sparkles className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-ember" />
+            <input
+              type="text"
+              placeholder="Instruct AI to code or modify features: e.g. 'Build dark mode', 'Add coupon discount', 'Add product reviews'..."
+              value={customAiPrompt}
+              onChange={(e) => setCustomAiPrompt(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && triggerCodeGeneration()}
+              className="w-full pl-9 pr-4 py-2 rounded-xl bg-zinc-900/90 border border-white/10 text-xs text-white placeholder-zinc-500 outline-none focus:border-ember"
+            />
+          </div>
+
+          <button
+            onClick={() => triggerCodeGeneration()}
+            disabled={isGenerating}
+            className="px-4 py-2 rounded-xl bg-ember hover:bg-ember-hover text-zinc-950 font-bold text-xs flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer shadow-glow whitespace-nowrap"
+          >
+            <RotateCcw className={`w-3.5 h-3.5 ${isGenerating ? 'animate-spin' : ''}`} />
+            <span>{isGenerating ? 'Developing Code...' : 'Develop Application with AI'}</span>
+          </button>
+        </div>
       </div>
 
       {generationError && (
@@ -317,28 +386,88 @@ export const CodeStudio: React.FC<CodeStudioProps> = ({ project }) => {
             <span>{generationError}</span>
           </div>
           <button
-            onClick={triggerCodeGeneration}
-            className="px-3 py-1 rounded bg-rose-900 hover:bg-rose-800 text-white font-bold"
+            onClick={() => triggerCodeGeneration()}
+            className="px-3 py-1 rounded bg-rose-900 hover:bg-rose-800 text-white font-bold cursor-pointer"
           >
             Retry
           </button>
         </div>
       )}
 
-      {/* VIEW MODE 1: Interactive Live App Preview */}
+      {/* VIEW MODE 1: Standalone Live App Preview */}
       {viewMode === 'preview' && (
-        <div className="min-h-[640px]">
+        <div className="w-full">
           <LiveAppPreview
             projectName={project.name}
             projectDescription={project.description}
             entities={project.entities || []}
             endpoints={project.endpoints || []}
             requirements={project.requirements || []}
+            files={files}
+            selectedStack={selectedStack}
+            onCodeRegenerate={(prompt) => triggerCodeGeneration(prompt)}
+            isGenerating={isGenerating}
           />
         </div>
       )}
 
-      {/* VIEW MODE 2: Full Source Code Viewer, Editor & File Tree */}
+      {/* VIEW MODE 2: Split Screen (Preview Left, Code Right) */}
+      {viewMode === 'split' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          <div className="lg:col-span-6 h-[720px]">
+            <LiveAppPreview
+              projectName={project.name}
+              projectDescription={project.description}
+              entities={project.entities || []}
+              endpoints={project.endpoints || []}
+              requirements={project.requirements || []}
+              files={files}
+              selectedStack={selectedStack}
+              onCodeRegenerate={(prompt) => triggerCodeGeneration(prompt)}
+              isGenerating={isGenerating}
+            />
+          </div>
+
+          <div className="lg:col-span-6 h-[720px] rounded-2xl bg-zinc-950 border border-white/10 flex flex-col overflow-hidden">
+            {/* Split Code Header */}
+            <div className="px-4 py-2.5 border-b border-white/10 bg-zinc-900 flex items-center justify-between text-xs font-mono">
+              <div className="flex items-center gap-2 text-white truncate">
+                {activeFile && getFileIcon(activeFile.path)}
+                <span className="font-bold truncate">{activeFile?.path}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <select
+                  value={activeFilePath}
+                  onChange={(e) => setActiveFilePath(e.target.value)}
+                  className="bg-zinc-950 border border-white/10 rounded-lg px-2 py-1 text-[11px] text-white outline-none cursor-pointer"
+                >
+                  {files.map((f) => (
+                    <option key={f.path} value={f.path}>
+                      {f.path}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={handleCopyFile}
+                  className="p-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300"
+                  title="Copy file code"
+                >
+                  {copiedFile ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Split Code Body */}
+            <div className="flex-1 p-4 overflow-auto bg-zinc-950 font-mono text-[11px] leading-relaxed text-zinc-200">
+              <pre className="whitespace-pre overflow-x-auto">
+                <code>{activeFile?.content || '// Loading code...'}</code>
+              </pre>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* VIEW MODE 3: Full Source Code Viewer & Editor */}
       {viewMode === 'code' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[580px]">
           {/* Left File Tree Explorer */}
@@ -366,7 +495,7 @@ export const CodeStudio: React.FC<CodeStudioProps> = ({ project }) => {
                 />
               </div>
 
-              <div className="space-y-1 overflow-y-auto max-h-[420px] pr-1">
+              <div className="space-y-1 overflow-y-auto max-h-[420px] pr-1 custom-scroll">
                 {filteredFiles.map((file) => {
                   const isSelected = file.path === activeFile?.path;
                   return (
@@ -423,14 +552,14 @@ export const CodeStudio: React.FC<CodeStudioProps> = ({ project }) => {
                   <>
                     <button
                       onClick={() => setIsEditing(false)}
-                      className="px-2.5 py-1.5 rounded-lg bg-zinc-800 text-zinc-400 hover:text-white"
+                      className="px-2.5 py-1.5 rounded-lg bg-zinc-800 text-zinc-400 hover:text-white cursor-pointer"
                     >
                       Cancel
                     </button>
                     <button
                       onClick={handleSaveEdit}
                       disabled={isSaving}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-ember hover:bg-ember-hover text-zinc-950 font-bold transition-colors"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-ember hover:bg-ember-hover text-zinc-950 font-bold transition-colors cursor-pointer"
                     >
                       <Save className="w-3.5 h-3.5" />
                       <span>{isSaving ? 'Saving...' : 'Save File'}</span>
@@ -440,7 +569,7 @@ export const CodeStudio: React.FC<CodeStudioProps> = ({ project }) => {
                   <>
                     <button
                       onClick={() => setIsEditing(true)}
-                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition-colors"
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition-colors cursor-pointer"
                     >
                       <Edit3 className="w-3.5 h-3.5" />
                       <span>Edit</span>

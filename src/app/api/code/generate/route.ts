@@ -5,7 +5,7 @@ import { generateCodeStudioFiles } from '@/lib/ai-gateway';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { blueprint, projectId, targetTask, userId } = body;
+    const { blueprint, projectId, targetTask, userId, targetStack, customPrompt } = body;
 
     if (!blueprint || !blueprint.name) {
       return NextResponse.json({ error: 'Valid blueprint data is required.' }, { status: 400 });
@@ -20,6 +20,8 @@ export async function POST(req: NextRequest) {
       entities: blueprint.entities || [],
       endpoints: blueprint.endpoints || blueprint.apiEndpoints || [],
       targetTask: targetTask || undefined,
+      targetStack: targetStack || undefined,
+      customPrompt: customPrompt || undefined,
     });
 
     // If projectId is provided, persist generated codebase back to Supabase project

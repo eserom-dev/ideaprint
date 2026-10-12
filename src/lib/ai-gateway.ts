@@ -837,19 +837,25 @@ export async function generateCodeStudioFiles(options: {
   entities?: any[];
   endpoints?: any[];
   targetTask?: { displayId: string; title: string; description: string };
+  targetStack?: string;
+  customPrompt?: string;
 }): Promise<GeneratedCodeFile[]> {
   const isTaskTargeted = !!options.targetTask;
+  const effectiveStack = options.targetStack || (options.stack ? options.stack.join(', ') : 'Next.js 14 App Router, TypeScript, Tailwind CSS, Supabase PostgreSQL');
+  const isVanillaStack = effectiveStack.toLowerCase().includes('html') || effectiveStack.toLowerCase().includes('vanilla') || effectiveStack.toLowerCase().includes('javascript');
 
   const system = `You are a Principal Software Engineer generating real, runnable, production code for ${options.projectName}.
 Rules:
-1. Zero placeholders, zero ellipses, zero lorem ipsum. Output actual, compilable Next.js 14 App Router, TypeScript, Tailwind CSS, and Supabase PostgreSQL code.
-2. Every database query must use Supabase client with proper Row Level Security awareness.
-3. Every API route must validate inputs and handle errors.
-4. Output MUST be valid JSON: { "files": [ { "path": "...", "description": "...", "language": "...", "content": "..." } ] }`;
+1. Zero placeholders, zero ellipses, zero lorem ipsum. Output actual, compilable, beautifully designed code.
+2. Every component, page, and script must be 100% complete and functional with real event handlers, state, search, and actions.
+3. Every database query must use Supabase client with proper Row Level Security awareness.
+4. Every API route must validate inputs and handle errors.
+5. Always generate a "preview/index.html" file containing a complete, self-contained, standalone runnable preview of the planned application with Tailwind CSS CDN, Lucide icons, and interactive JavaScript so it runs instantly in any browser.
+6. Output MUST be valid JSON: { "files": [ { "path": "...", "description": "...", "language": "...", "content": "..." } ] }`;
 
   let prompt = `Project: ${options.projectName}
 Description: ${options.description}
-Stack: ${(options.stack || ['Next.js 14 App Router', 'TypeScript', 'Tailwind CSS', 'Supabase PostgreSQL']).join(', ')}
+Selected Programming Stack: ${effectiveStack}
 
 Requirements:
 ${(options.requirements || []).slice(0, 6).map((r) => `- [${r.displayId}] ${r.statement}`).join('\n')}
@@ -860,25 +866,37 @@ ${(options.entities || []).slice(0, 5).map((e) => `- ${e.name} (${(e.fields || [
 API Endpoints:
 ${(options.endpoints || []).slice(0, 5).map((ep) => `- ${ep.method} ${ep.path}: ${ep.summary}`).join('\n')}`;
 
+  if (options.customPrompt) {
+    prompt += `\n\nUSER CUSTOM INSTRUCTION / FEATURE REQUEST:\n${options.customPrompt}`;
+  }
+
   if (isTaskTargeted) {
     prompt += `\n\nTARGET TASK SPECIFICATION:
 Task ID: ${options.targetTask?.displayId}
 Title: ${options.targetTask?.title}
 Description: ${options.targetTask?.description}
 
-Synthesize or update the specific code files that implement this task directly.`;
+Synthesize or update the specific code files that implement this task directly, including the preview file.`;
+  } else if (isVanillaStack) {
+    prompt += `\n\nGenerate the complete application file tree for an HTML5 + CSS + JavaScript stack:
+1. index.html (Complete, beautiful, responsive, fully functional HTML5 storefront/application with Tailwind CSS & Lucide icons)
+2. styles.css (Modern CSS with smooth transitions and glassmorphic styling)
+3. app.js (Complete interactive logic, state management, event listeners, cart/actions, and localStorage persistence)
+4. preview/index.html (Self-contained runnable preview bundle with all UI, styles, and scripts)
+5. README.md`;
   } else {
-    prompt += `\n\nGenerate the complete core full-stack application file tree:
+    prompt += `\n\nGenerate the complete core full-stack application file tree for ${effectiveStack}:
 1. package.json
 2. tsconfig.json
 3. tailwind.config.ts
 4. src/app/layout.tsx
-5. src/app/page.tsx
+5. src/app/page.tsx (Complete, production-grade interactive React page with full state, catalog/items, cart/actions, and modals)
 6. src/lib/supabase.ts
 7. src/lib/types.ts
 8. src/app/api/data/route.ts
 9. supabase/schema.sql
-10. README.md`;
+10. preview/index.html (Self-contained, runnable standalone HTML preview of the planned app with Tailwind CSS and Lucide icons for instant browser execution)
+11. README.md`;
   }
 
   const result = await generateStructured({ system, prompt, temperature: 0.2 }, CodeFilesSchema);
